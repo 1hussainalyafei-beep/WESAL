@@ -85,7 +85,7 @@ export function AnalyzingScreen({ gameName, onComplete }: AnalyzingScreenProps) 
                  transition: 'opacity 0.5s',
                }}>
             <div className="w-3 h-3 rounded-full bg-yellow-400 animate-pulse"></div>
-            <span className="text-white font-semibold">إعداد التوصيات بواسطة GPT</span>
+            <span className="text-white font-semibold">إعداد التوصيات  </span>
           </div>
         </div>
       </div>
