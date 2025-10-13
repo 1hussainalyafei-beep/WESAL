@@ -7,7 +7,7 @@ interface ImprovedAttentionGameProps {
   onSkip: () => void;
 }
 
-const symbols = ['⭐', '🌟', '✨', '💫', '🔆'];
+const symbols = ['⭐', '🌙', '☀️'];
 const targetSymbol = '⭐';
 
 export function ImprovedAttentionGame({ onComplete, onBack, onSkip }: ImprovedAttentionGameProps) {
@@ -19,7 +19,7 @@ export function ImprovedAttentionGame({ onComplete, onBack, onSkip }: ImprovedAt
   const [startTime] = useState(Date.now());
   const [responseTimes, setResponseTimes] = useState<number[]>([]);
   const [roundStartTime, setRoundStartTime] = useState(Date.now());
-  const totalRounds = 20;
+  const totalRounds = 12;
 
   useEffect(() => {
     if (round < totalRounds) {
@@ -119,8 +119,12 @@ export function ImprovedAttentionGame({ onComplete, onBack, onSkip }: ImprovedAt
 
         <button
           onClick={handleClick}
-          className="w-full aspect-square max-w-md mx-auto rounded-3xl text-9xl flex items-center justify-center card transition-all duration-200 hover:scale-105"
-          style={{ backgroundColor: 'var(--white)' }}
+          className="w-full aspect-square max-w-sm mx-auto rounded-full flex items-center justify-center shadow-2xl transition-all duration-200 hover:scale-105"
+          style={{
+            backgroundColor: '#667eea',
+            fontSize: '10rem',
+            border: '8px solid #FFFFFF'
+          }}
         >
           {currentSymbol || '👀'}
         </button>

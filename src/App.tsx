@@ -183,20 +183,22 @@ function App() {
 
       if (sessionError) throw sessionError;
 
+      const gptAnalysis = await analyzeGameSession(session, childAge);
+
       const { data: report, error: reportError } = await supabase
         .from('game_reports')
         .insert({
           session_id: session.id,
-          analysis: miniReport.reasons.join('. '),
-          performance_score: miniReport.score,
+          analysis: gptAnalysis.analysis,
+          performance_score: gptAnalysis.performance_score,
           status: miniReport.status,
           sub_scores: miniReport.subScores,
           reasons: miniReport.reasons,
-          tip: miniReport.tip,
+          tip: gptAnalysis.quick_tip,
           flags: miniReport.flags,
-          strengths: [],
-          recommendations: [miniReport.tip],
-          level: miniReport.score >= 70 ? 'normal' : 'below_normal',
+          strengths: gptAnalysis.strengths,
+          recommendations: gptAnalysis.recommendations,
+          level: gptAnalysis.level,
         })
         .select()
         .single();
@@ -213,7 +215,7 @@ function App() {
       setCompletedGames([...completedGames, selectedGame]);
       setCurrentSessionReports([...currentSessionReports, report]);
       setCurrentReport(report);
-      setCurrentMiniReport(miniReport);
+      setCurrentMiniReport({ ...miniReport, gptAnalysis });
     } catch (error) {
       console.error('Error handling game completion:', error);
       setCurrentScreen('game-sequence');
@@ -405,6 +407,7 @@ function App() {
           onSelectGame={handleGameSelect}
           onBack={() => setCurrentScreen(assessmentMode ? 'assessment-paths' : 'home')}
           onGenerateFinalReport={handleGenerateFinalReport}
+          mode={assessmentMode || 'all'}
         />
       );
 
@@ -432,6 +435,7 @@ function App() {
           onHome={handleMiniReportHome}
           onReplay={handleMiniReportReplay}
           showNext={assessmentMode === 'all'}
+          gptAnalysis={currentMiniReport.gptAnalysis}
         />
       );
 

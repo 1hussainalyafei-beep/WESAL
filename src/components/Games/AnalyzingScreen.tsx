@@ -13,53 +13,48 @@ export function AnalyzingScreen({ gameName, onComplete }: AnalyzingScreenProps) 
       setProgress((prev) => {
         if (prev >= 100) {
           clearInterval(interval);
-          setTimeout(onComplete, 500);
+          setTimeout(onComplete, 800);
           return 100;
         }
-        return prev + 10;
+        return prev + 5;
       });
-    }, 200);
+    }, 300);
 
     return () => clearInterval(interval);
   }, [onComplete]);
 
   return (
     <div className="min-h-screen flex items-center justify-center"
-         style={{ backgroundColor: '#A8C7E7' }}>
+         style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
       <div className="max-w-md w-full mx-4 text-center">
         <div className="mb-8">
-          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full mb-6"
-               style={{ backgroundColor: '#5B4B9D' }}>
-            <div className="flex gap-2">
-              <div className="w-3 h-3 rounded-full bg-white animate-bounce"
-                   style={{ animationDelay: '0ms' }}></div>
-              <div className="w-3 h-3 rounded-full bg-white animate-bounce"
-                   style={{ animationDelay: '150ms' }}></div>
-              <div className="w-3 h-3 rounded-full bg-white animate-bounce"
-                   style={{ animationDelay: '300ms' }}></div>
+          <div className="inline-flex items-center justify-center w-32 h-32 rounded-full mb-6"
+               style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
+            <div className="text-6xl animate-pulse">
+              🤖
             </div>
           </div>
 
-          <h2 className="text-3xl font-bold mb-4" style={{ color: '#5B4B9D' }}>
-            جارٍ تحليل أدائك بالذكاء الاصطناعي...
+          <h2 className="text-3xl font-bold mb-4 text-white">
+            الذكاء الاصطناعي يحلل أدائك الآن...
           </h2>
 
-          <p className="text-xl mb-8" style={{ color: '#5B4B9D', opacity: 0.8 }}>
+          <p className="text-xl mb-8 text-white" style={{ opacity: 0.9 }}>
             {gameName}
           </p>
 
-          <div className="w-full h-4 rounded-full overflow-hidden"
-               style={{ backgroundColor: 'rgba(91, 75, 157, 0.2)' }}>
+          <div className="w-full h-6 rounded-full overflow-hidden"
+               style={{ backgroundColor: 'rgba(255,255,255,0.3)' }}>
             <div
               className="h-full transition-all duration-300 rounded-full"
               style={{
                 width: `${progress}%`,
-                backgroundColor: '#5B4B9D',
+                background: 'linear-gradient(90deg, #FFD700, #FFA500)',
               }}
             />
           </div>
 
-          <p className="mt-4 text-lg font-semibold" style={{ color: '#5B4B9D' }}>
+          <p className="mt-4 text-2xl font-bold text-white">
             {progress}%
           </p>
         </div>
@@ -67,32 +62,32 @@ export function AnalyzingScreen({ gameName, onComplete }: AnalyzingScreenProps) 
         <div className="space-y-3">
           <div className="flex items-center gap-3 p-4 rounded-xl"
                style={{
-                 backgroundColor: 'rgba(255,255,255,0.5)',
-                 opacity: progress > 30 ? 1 : 0.3,
+                 backgroundColor: 'rgba(255,255,255,0.2)',
+                 opacity: progress > 25 ? 1 : 0.3,
                  transition: 'opacity 0.5s',
                }}>
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#5B4B9D' }}></div>
-            <span style={{ color: '#5B4B9D' }}>تحليل الدقة والسرعة</span>
+            <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse"></div>
+            <span className="text-white font-semibold">تحليل الدقة والسرعة</span>
           </div>
 
           <div className="flex items-center gap-3 p-4 rounded-xl"
                style={{
-                 backgroundColor: 'rgba(255,255,255,0.5)',
-                 opacity: progress > 60 ? 1 : 0.3,
+                 backgroundColor: 'rgba(255,255,255,0.2)',
+                 opacity: progress > 50 ? 1 : 0.3,
                  transition: 'opacity 0.5s',
                }}>
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#5B4B9D' }}></div>
-            <span style={{ color: '#5B4B9D' }}>مقارنة مع المعايير العمرية</span>
+            <div className="w-3 h-3 rounded-full bg-blue-400 animate-pulse"></div>
+            <span className="text-white font-semibold">مقارنة مع المعايير العمرية</span>
           </div>
 
           <div className="flex items-center gap-3 p-4 rounded-xl"
                style={{
-                 backgroundColor: 'rgba(255,255,255,0.5)',
-                 opacity: progress > 90 ? 1 : 0.3,
+                 backgroundColor: 'rgba(255,255,255,0.2)',
+                 opacity: progress > 75 ? 1 : 0.3,
                  transition: 'opacity 0.5s',
                }}>
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#5B4B9D' }}></div>
-            <span style={{ color: '#5B4B9D' }}>إعداد التوصيات والنصائح</span>
+            <div className="w-3 h-3 rounded-full bg-yellow-400 animate-pulse"></div>
+            <span className="text-white font-semibold">إعداد التوصيات بواسطة GPT</span>
           </div>
         </div>
       </div>

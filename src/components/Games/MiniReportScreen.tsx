@@ -10,6 +10,11 @@ interface MiniReportScreenProps {
   onHome: () => void;
   onReplay: () => void;
   showNext: boolean;
+  gptAnalysis?: {
+    analysis: string;
+    strengths: string[];
+    recommendations: string[];
+  };
 }
 
 export function MiniReportScreen({
@@ -22,6 +27,7 @@ export function MiniReportScreen({
   onHome,
   onReplay,
   showNext,
+  gptAnalysis,
 }: MiniReportScreenProps) {
   const getScoreColor = (score: number) => {
     if (score >= 85) return '#4CAF50';
@@ -40,9 +46,9 @@ export function MiniReportScreen({
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#FFFFFF' }}>
       <header className="p-6 rounded-b-3xl shadow-lg"
-              style={{ backgroundColor: '#FFB6D9' }}>
+              style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-2xl font-bold text-center" style={{ color: '#5B4B9D' }}>
+          <h1 className="text-2xl font-bold text-center text-white">
             تقرير {gameName}
           </h1>
         </div>
@@ -71,6 +77,57 @@ export function MiniReportScreen({
         </div>
 
         <div className="space-y-6">
+          {gptAnalysis && (
+            <div className="rounded-2xl p-6"
+                 style={{ backgroundColor: '#E3F2FD', border: '2px solid #42A5F5' }}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="text-3xl">🤖</div>
+                <h3 className="text-xl font-bold" style={{ color: '#1976D2' }}>
+                  تحليل الذكاء الاصطناعي
+                </h3>
+              </div>
+              <p className="text-lg leading-relaxed mb-4" style={{ color: '#212121' }}>
+                {gptAnalysis.analysis}
+              </p>
+
+              {gptAnalysis.strengths.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="font-bold mb-2 text-lg" style={{ color: '#1976D2' }}>
+                    ✨ نقاط القوة:
+                  </h4>
+                  <ul className="space-y-2">
+                    {gptAnalysis.strengths.map((strength, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="text-green-500">✓</span>
+                        <span className="leading-relaxed" style={{ color: '#212121' }}>
+                          {strength}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {gptAnalysis.recommendations.length > 0 && (
+                <div>
+                  <h4 className="font-bold mb-2 text-lg" style={{ color: '#1976D2' }}>
+                    💡 توصيات للتحسين:
+                  </h4>
+                  <ul className="space-y-2">
+                    {gptAnalysis.recommendations.map((rec, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span>•</span>
+                        <span className="leading-relaxed" style={{ color: '#212121' }}>
+                          {rec}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="rounded-2xl p-6"
                style={{ backgroundColor: '#F5F5F5' }}>
             <h3 className="text-xl font-bold mb-4" style={{ color: '#5B4B9D' }}>
@@ -90,11 +147,11 @@ export function MiniReportScreen({
           </div>
 
           <div className="rounded-2xl p-6"
-               style={{ backgroundColor: '#A8C7E7' }}>
-            <h3 className="text-xl font-bold mb-3" style={{ color: '#5B4B9D' }}>
-              💡 نصيحة للتحسين
+               style={{ backgroundColor: '#E8F5E9' }}>
+            <h3 className="text-xl font-bold mb-3" style={{ color: '#26A69A' }}>
+              💡 نصيحة سريعة
             </h3>
-            <p className="text-lg leading-relaxed" style={{ color: '#5B4B9D' }}>
+            <p className="text-lg leading-relaxed" style={{ color: '#212121' }}>
               {tip}
             </p>
           </div>

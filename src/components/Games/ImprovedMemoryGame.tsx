@@ -18,7 +18,7 @@ interface GameData {
   };
 }
 
-const emojis = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼'];
+const emojis = ['🐶', '🐱', '🐭', '🐰', '🦊', '🐻'];
 
 export function ImprovedMemoryGame({ onComplete, onBack, onSkip }: ImprovedMemoryGameProps) {
   const [cards, setCards] = useState<string[]>([]);
@@ -123,7 +123,7 @@ export function ImprovedMemoryGame({ onComplete, onBack, onSkip }: ImprovedMemor
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-3 gap-4 sm:gap-6 max-w-md mx-auto">
           {cards.map((card, index) => {
             const isFlipped = flipped.includes(index) || matched.includes(index);
             const isMatched = matched.includes(index);
@@ -132,18 +132,18 @@ export function ImprovedMemoryGame({ onComplete, onBack, onSkip }: ImprovedMemor
               <button
                 key={index}
                 onClick={() => handleCardClick(index)}
-                className="aspect-square rounded-2xl text-4xl sm:text-5xl font-bold transition-all duration-300 transform hover:scale-105"
+                className="aspect-square rounded-3xl text-6xl font-bold transition-all duration-300 transform hover:scale-105 shadow-lg"
                 style={{
                   backgroundColor: isMatched
-                    ? 'var(--green-success)'
+                    ? '#66BB6A'
                     : isFlipped
-                    ? 'var(--white)'
-                    : 'var(--primary-purple)',
-                  color: isFlipped ? 'inherit' : 'var(--white)',
-                  boxShadow: 'var(--shadow-md)',
+                    ? '#FFFFFF'
+                    : '#667eea',
+                  color: isFlipped ? 'inherit' : '#FFFFFF',
+                  border: isFlipped ? '4px solid #667eea' : 'none',
                 }}
               >
-                {isFlipped ? card : '?'}
+                {isFlipped ? card : '❓'}
               </button>
             );
           })}
