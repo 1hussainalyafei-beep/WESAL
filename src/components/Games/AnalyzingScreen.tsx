@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { DNALoader } from '../Common/DNALoader';
 
 interface AnalyzingScreenProps {
   gameName: string;
@@ -28,11 +29,8 @@ export function AnalyzingScreen({ gameName, onComplete }: AnalyzingScreenProps) 
          style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
       <div className="max-w-md w-full mx-4 text-center">
         <div className="mb-8">
-          <div className="inline-flex items-center justify-center w-32 h-32 rounded-full mb-6"
-               style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-            <div className="text-6xl animate-pulse">
-              🤖
-            </div>
+          <div className="mb-8">
+            <DNALoader message={gameName} />
           </div>
 
           <h2 className="text-3xl font-bold mb-4 text-white">

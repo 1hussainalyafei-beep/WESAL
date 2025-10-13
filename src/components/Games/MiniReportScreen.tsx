@@ -54,10 +54,10 @@ export function MiniReportScreen({
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-8">
+      <main className="max-w-2xl mx-auto px-4 py-8 animate-fadeInUp">
         <div className="text-center mb-8">
           <div
-            className="inline-flex items-center justify-center w-32 h-32 rounded-full mb-4"
+            className="inline-flex items-center justify-center w-32 h-32 rounded-full mb-4 animate-celebration"
             style={{
               backgroundColor: getScoreColor(score),
               boxShadow: `0 8px 24px ${getScoreColor(score)}40`,
@@ -69,7 +69,7 @@ export function MiniReportScreen({
             </div>
           </div>
 
-          <div className="text-4xl mb-2">{getScoreBadge(score)}</div>
+          <div className="text-4xl mb-2 animate-bounce">{getScoreBadge(score)}</div>
 
           <h2 className="text-3xl font-bold mb-2" style={{ color: '#5B4B9D' }}>
             {status}

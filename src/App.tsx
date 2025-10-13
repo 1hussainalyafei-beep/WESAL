@@ -20,8 +20,8 @@ import { BehaviorPage } from './components/Behavior/BehaviorPage';
 import { StorePage } from './components/Store/StorePage';
 import { AIAssistantPage } from './components/AIAssistant/AIAssistantPage';
 import { supabase } from './lib/supabase';
-import { analyzeGameSession, generateComprehensiveReport } from './services/analysisService';
-import { generateMiniReport } from './services/scoringService';
+import { generateMiniReport, generateComprehensiveReport } from './services/openaiService';
+import { generateMiniReport as generateLocalMiniReport } from './services/scoringService';
 import { GameType, Child, GameSession, GameReport as GameReportType, ComprehensiveReport } from './types';
 import { Loader2 } from 'lucide-react';
 
@@ -159,46 +159,40 @@ function App() {
       );
 
       const rawEvents = gameData.rawData?.events || [];
-      const miniReport = generateMiniReport(rawEvents, selectedGame, childAge);
+      const localMiniReport = generateLocalMiniReport(rawEvents, selectedGame, childAge);
 
       const { data: session, error: sessionError } = await supabase
         .from('game_sessions')
         .insert({
           child_id: child.id,
           game_type: selectedGame,
-          score: miniReport.score,
+          score: localMiniReport.score,
           duration_seconds: gameData.duration,
           raw_data: gameData.rawData,
           completed: true,
           started_at: new Date(startTime).toISOString(),
-          metrics: {
-            accuracy: miniReport.subScores.accuracy,
-            latency: miniReport.subScores.latency,
-            hesitation: miniReport.subScores.hesitation,
-            stability: miniReport.subScores.stability,
-          },
         })
         .select()
         .single();
 
       if (sessionError) throw sessionError;
 
-      const gptAnalysis = await analyzeGameSession(session, childAge);
+      const gptAnalysis = await generateMiniReport(session, childAge);
 
       const { data: report, error: reportError } = await supabase
         .from('game_reports')
         .insert({
           session_id: session.id,
-          analysis: gptAnalysis.analysis,
-          performance_score: gptAnalysis.performance_score,
-          status: miniReport.status,
-          sub_scores: miniReport.subScores,
-          reasons: miniReport.reasons,
-          tip: gptAnalysis.quick_tip,
-          flags: miniReport.flags,
-          strengths: gptAnalysis.strengths,
-          recommendations: gptAnalysis.recommendations,
-          level: gptAnalysis.level,
+          analysis: gptAnalysis.analysisText,
+          performance_score: gptAnalysis.performanceScore,
+          status: localMiniReport.status,
+          sub_scores: localMiniReport.subScores,
+          reasons: gptAnalysis.observations,
+          tip: gptAnalysis.quickTip,
+          flags: localMiniReport.flags,
+          strengths: gptAnalysis.observations,
+          recommendations: [gptAnalysis.quickTip],
+          level: gptAnalysis.performanceLevel,
         })
         .select()
         .single();
@@ -209,13 +203,21 @@ function App() {
         child_id: child.id,
         event_type: 'game_complete',
         game_type: selectedGame,
-        metadata: { score: miniReport.score, duration: gameData.duration },
+        metadata: { score: gptAnalysis.performanceScore, duration: gameData.duration },
       });
 
       setCompletedGames([...completedGames, selectedGame]);
       setCurrentSessionReports([...currentSessionReports, report]);
       setCurrentReport(report);
-      setCurrentMiniReport({ ...miniReport, gptAnalysis });
+      setCurrentMiniReport({
+        ...localMiniReport,
+        score: gptAnalysis.performanceScore,
+        gptAnalysis: {
+          analysis: gptAnalysis.analysisText,
+          strengths: gptAnalysis.observations,
+          recommendations: [gptAnalysis.quickTip],
+        }
+      });
     } catch (error) {
       console.error('Error handling game completion:', error);
       setCurrentScreen('game-sequence');
@@ -279,13 +281,11 @@ function App() {
     setCurrentScreen('final-report-loading');
 
     try {
-      const { data: allSessions, error } = await supabase
-        .from('game_sessions')
+      const { data: allReports, error } = await supabase
+        .from('game_reports')
         .select('*')
-        .eq('child_id', child.id)
-        .in('game_type', completedGames)
-        .order('created_at', { ascending: false })
-        .limit(6);
+        .in('session_id', currentSessionReports.map(r => r.session_id))
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
@@ -293,8 +293,16 @@ function App() {
         (Date.now() - new Date(child.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000)
       );
 
+      const miniReportsData = allReports.map(report => ({
+        game_type: completedGames[allReports.indexOf(report)] as GameType,
+        performance_score: report.performance_score,
+        performance_level: report.level,
+        analysis_text: report.analysis,
+        observations: report.reasons || [],
+      }));
+
       const comprehensiveAnalysis = await generateComprehensiveReport(
-        allSessions || [],
+        miniReportsData,
         child.name,
         childAge
       );
@@ -303,12 +311,12 @@ function App() {
         .from('comprehensive_reports')
         .insert({
           child_id: child.id,
-          overall_score: comprehensiveAnalysis.overall_score,
-          cognitive_map: comprehensiveAnalysis.cognitive_map,
-          detailed_analysis: comprehensiveAnalysis.detailed_analysis,
+          overall_score: comprehensiveAnalysis.overallScore,
+          cognitive_map: comprehensiveAnalysis.domainScores,
+          detailed_analysis: comprehensiveAnalysis.aiSummary,
           recommendations: comprehensiveAnalysis.recommendations,
-          specialist_alert: comprehensiveAnalysis.specialist_alert,
-          encouragement: comprehensiveAnalysis.encouragement,
+          specialist_alert: comprehensiveAnalysis.specialistAlert ? comprehensiveAnalysis.specialistAlertReason || '' : '',
+          encouragement: comprehensiveAnalysis.aiSummary,
         })
         .select()
         .single();
