@@ -13,8 +13,8 @@ export function AssessmentPaths({ onSelectPath, onBack }: AssessmentPathsProps) 
       description: 'جرّب لعبة محددة واحصل على تقريرها',
       duration: '2-3 دقائق',
       icon: PlayCircle,
-      color: '#5B4B9D',
-      iconBg: '#7B68B0',
+      color: '#7E57C2',
+      iconBg: '#9575CD',
     },
     {
       id: 'all' as const,
@@ -22,8 +22,8 @@ export function AssessmentPaths({ onSelectPath, onBack }: AssessmentPathsProps) 
       description: 'شغّل جميع الألعاب بالتتابع واحصل على تقرير شامل',
       duration: '12-15 دقيقة',
       icon: Brain,
-      color: '#FFB6D9',
-      iconBg: '#FFD4E8',
+      color: '#5B4B9D',
+      iconBg: '#7B68B0',
     },
     {
       id: 'view-reports' as const,
@@ -31,28 +31,28 @@ export function AssessmentPaths({ onSelectPath, onBack }: AssessmentPathsProps) 
       description: 'اعرض آخر التقارير الشاملة والجزئية بالتواريخ',
       duration: '',
       icon: List,
-      color: '#A8C7E7',
-      iconBg: '#C1D9F0',
+      color: '#42A5F5',
+      iconBg: '#64B5F6',
     },
   ];
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#FFFFFF' }}>
       <header className="p-6 rounded-b-3xl shadow-lg"
-              style={{ backgroundColor: '#FFB6D9' }}>
+              style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
         <div className="max-w-4xl mx-auto flex items-center gap-4">
           <button
             onClick={onBack}
             className="p-2 rounded-xl transition-colors"
-            style={{ backgroundColor: 'rgba(255,255,255,0.3)' }}
+            style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
           >
-            <ArrowRight className="w-6 h-6" style={{ color: '#5B4B9D' }} />
+            <ArrowRight className="w-6 h-6 text-white" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold" style={{ color: '#5B4B9D' }}>
+            <h1 className="text-2xl font-bold text-white">
               ابدأ التقييم
             </h1>
-            <p className="text-base" style={{ color: '#5B4B9D', opacity: 0.8 }}>
+            <p className="text-base text-white" style={{ opacity: 0.9 }}>
               اختر المسار المناسب لك
             </p>
           </div>
@@ -105,8 +105,8 @@ export function AssessmentPaths({ onSelectPath, onBack }: AssessmentPathsProps) 
         </div>
 
         <div className="mt-8 rounded-2xl p-6"
-             style={{ backgroundColor: '#A8C7E7', opacity: 0.6 }}>
-          <p className="text-center font-semibold" style={{ color: '#5B4B9D' }}>
+             style={{ backgroundColor: '#E3F2FD' }}>
+          <p className="text-center font-semibold" style={{ color: '#1976D2' }}>
             💡 نصيحة: للحصول على تقييم شامل ودقيق، ننصح بإكمال جميع الألعاب
           </p>
         </div>

@@ -37,67 +37,67 @@ export function MainHome({ childName, onNavigate }: MainHomeProps) {
       title: 'التقارير',
       subtitle: 'شاهد تقدمك',
       icon: BarChart3,
-      bgColor: '#A8C7E7',
-      iconBg: '#C1D9F0',
+      bgColor: '#42A5F5',
+      iconBg: '#64B5F6',
     },
     {
       id: 'consultation',
       title: 'استشارة طبيب',
       subtitle: 'تحدث مع متخصص',
       icon: Stethoscope,
-      bgColor: '#4CAF50',
-      iconBg: '#66BB6A',
+      bgColor: '#26A69A',
+      iconBg: '#4DB6AC',
     },
     {
       id: 'ai-assistant',
       title: 'المساعد الذكي',
-      subtitle: 'اسأل وتعلم مع الذكاء الاصطناعي',
+      subtitle: 'اسأل واستكشف',
       icon: Sparkles,
-      bgColor: '#FFB6D9',
-      iconBg: '#FFD4E8',
+      bgColor: '#7E57C2',
+      iconBg: '#9575CD',
     },
     {
       id: 'behavior',
       title: 'المراقبة السلوكية',
-      subtitle: 'تتبع أنشطتك اليومية',
+      subtitle: 'تتبع أنشطتك',
       icon: Eye,
-      bgColor: '#FF9800',
-      iconBg: '#FFB74D',
+      bgColor: '#FF7043',
+      iconBg: '#FF8A65',
     },
     {
       id: 'store',
       title: 'المتجر',
-      subtitle: 'ألعاب تعليمية ممتعة',
+      subtitle: 'ألعاب وأدوات تعليمية',
       icon: ShoppingBag,
-      bgColor: '#9C27B0',
-      iconBg: '#BA68C8',
+      bgColor: '#FFA726',
+      iconBg: '#FFB74D',
     },
   ];
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#FFFFFF' }}>
       <header className="p-6 rounded-b-3xl shadow-lg"
-              style={{ backgroundColor: '#FFB6D9' }}>
+              style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center">
-              <Heart className="w-7 h-7" style={{ color: '#FFB6D9' }} fill="#FFB6D9" />
+              <Brain className="w-7 h-7" style={{ color: '#667eea' }} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold" style={{ color: '#5B4B9D' }}>
-                مرحبًا يا بطلنا {childName}! 👋 مستعد لمغامرة أذكى اليوم؟
+              <h1 className="text-2xl font-bold text-white">
+                مرحبًا {childName}! 👋
               </h1>
-              <p className="text-base" style={{ color: '#5B4B9D', opacity: 0.8 }}>
-                اختر لعبتك وابدأ المرح!
+              <p className="text-base text-white" style={{ opacity: 0.9 }}>
+                مستعد لمغامرة تعليمية ممتعة اليوم؟
               </p>
             </div>
           </div>
           <button
             onClick={() => signOut()}
             className="p-3 rounded-xl transition-colors"
-            style={{ backgroundColor: 'rgba(255,255,255,0.3)' }}
+            style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
           >
-            <LogOut className="w-5 h-5" style={{ color: '#5B4B9D' }} />
+            <LogOut className="w-5 h-5 text-white" />
           </button>
         </div>
       </header>

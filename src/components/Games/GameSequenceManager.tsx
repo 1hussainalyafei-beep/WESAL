@@ -16,6 +16,7 @@ interface GameSequenceManagerProps {
   onSelectGame: (gameType: GameType) => void;
   onBack: () => void;
   onGenerateFinalReport: () => void;
+  mode?: 'single' | 'all';
 }
 
 const games: GameInfo[] = [
@@ -74,9 +75,11 @@ export function GameSequenceManager({
   onSelectGame,
   onBack,
   onGenerateFinalReport,
+  mode = 'all',
 }: GameSequenceManagerProps) {
   const allGamesCompleted = completedGames.length === games.length;
   const nextGameIndex = completedGames.length;
+  const isSingleMode = mode === 'single';
 
   return (
     <div className="min-h-screen p-6 page-transition" style={{ backgroundColor: 'var(--gray-50)' }}>
@@ -90,26 +93,30 @@ export function GameSequenceManager({
 
         <div className="card mb-6 text-center p-8">
           <h1 className="text-4xl font-bold mb-3" style={{ color: 'var(--primary-purple)' }}>
-            رحلة الألعاب المعرفية
+            {isSingleMode ? 'اختر لعبة واحدة' : 'رحلة الألعاب المعرفية'}
           </h1>
           <p className="text-lg mb-4" style={{ color: 'var(--gray-400)' }}>
-            أكمل جميع الألعاب للحصول على تقرير شامل
+            {isSingleMode
+              ? 'اختر أي لعبة واحصل على تقرير مصغر فوري'
+              : 'أكمل جميع الألعاب للحصول على تقرير شامل'}
           </p>
-          <div className="flex items-center justify-center gap-2">
-            <div className="text-3xl font-bold" style={{ color: 'var(--primary-purple)' }}>
-              {completedGames.length}
+          {!isSingleMode && (
+            <div className="flex items-center justify-center gap-2">
+              <div className="text-3xl font-bold" style={{ color: 'var(--primary-purple)' }}>
+                {completedGames.length}
+              </div>
+              <span style={{ color: 'var(--gray-400)' }}>/</span>
+              <div className="text-3xl font-bold" style={{ color: 'var(--gray-400)' }}>
+                {games.length}
+              </div>
             </div>
-            <span style={{ color: 'var(--gray-400)' }}>/</span>
-            <div className="text-3xl font-bold" style={{ color: 'var(--gray-400)' }}>
-              {games.length}
-            </div>
-          </div>
+          )}
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
           {games.map((game, index) => {
             const isCompleted = completedGames.includes(game.type);
-            const isUnlocked = index === 0 || completedGames.includes(games[index - 1].type);
+            const isUnlocked = isSingleMode || index === 0 || completedGames.includes(games[index - 1].type);
             const isCurrent = index === nextGameIndex;
 
             return (
