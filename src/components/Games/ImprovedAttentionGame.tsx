@@ -20,6 +20,7 @@ export function ImprovedAttentionGame({ onComplete, onBack, onSkip }: ImprovedAt
   const [responseTimes, setResponseTimes] = useState<number[]>([]);
   const [roundStartTime, setRoundStartTime] = useState(Date.now());
   const totalRounds = 12;
+  const [events, setEvents] = useState<Array<{timestamp: number; type: string; value: any}>>([]);
 
   useEffect(() => {
     if (round < totalRounds) {
@@ -36,14 +37,23 @@ export function ImprovedAttentionGame({ onComplete, onBack, onSkip }: ImprovedAt
   }, [round]);
 
   const handleClick = () => {
-    const responseTime = Date.now() - roundStartTime;
+    const now = Date.now();
+    const responseTime = now - roundStartTime;
     setResponseTimes([...responseTimes, responseTime]);
 
-    if (currentSymbol === targetSymbol) {
+    const isCorrect = currentSymbol === targetSymbol;
+    if (isCorrect) {
       setCorrect(correct + 1);
     } else {
       setIncorrect(incorrect + 1);
     }
+
+    setEvents([...events, {
+      timestamp: now,
+      type: 'click',
+      value: { correct: isCorrect, isTarget: currentSymbol === targetSymbol, responseTime }
+    }]);
+
     setCurrentSymbol('');
   };
 
@@ -63,6 +73,7 @@ export function ImprovedAttentionGame({ onComplete, onBack, onSkip }: ImprovedAt
           missed,
           accuracy,
           averageResponseTime: Math.floor(avgResponseTime),
+          events: events,
         },
       });
     }, 500);

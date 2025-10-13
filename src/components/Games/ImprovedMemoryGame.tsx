@@ -28,6 +28,7 @@ export function ImprovedMemoryGame({ onComplete, onBack, onSkip }: ImprovedMemor
   const [startTime] = useState(Date.now());
   const [responseTimes, setResponseTimes] = useState<number[]>([]);
   const [lastFlipTime, setLastFlipTime] = useState<number>(0);
+  const [events, setEvents] = useState<Array<{timestamp: number; type: string; value: any}>>([]);
 
   useEffect(() => {
     const shuffled = [...emojis, ...emojis].sort(() => Math.random() - 0.5);
@@ -49,6 +50,7 @@ export function ImprovedMemoryGame({ onComplete, onBack, onSkip }: ImprovedMemor
             totalAttempts: attempts,
             averageResponseTime: Math.floor(avgResponseTime),
             mistakes: attempts - (matched.length / 2),
+            events: events,
           },
         });
       }, 1000);
@@ -71,12 +73,26 @@ export function ImprovedMemoryGame({ onComplete, onBack, onSkip }: ImprovedMemor
 
     if (newFlipped.length === 2) {
       setAttempts(attempts + 1);
-      if (cards[newFlipped[0]] === cards[newFlipped[1]]) {
+      const isMatch = cards[newFlipped[0]] === cards[newFlipped[1]];
+
+      setEvents([...events, {
+        timestamp: now,
+        type: 'match',
+        value: { correct: isMatch, responseTime: now - lastFlipTime }
+      }]);
+
+      if (isMatch) {
         setMatched([...matched, ...newFlipped]);
         setFlipped([]);
       } else {
         setTimeout(() => setFlipped([]), 1000);
       }
+    } else {
+      setEvents([...events, {
+        timestamp: now,
+        type: 'click',
+        value: { index, responseTime: lastFlipTime > 0 ? now - lastFlipTime : 0 }
+      }]);
     }
   };
 

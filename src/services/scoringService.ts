@@ -34,7 +34,7 @@ interface MiniReport {
 
 const HESITATION_THRESHOLD_MS = 1500;
 const SPAM_THRESHOLD_MS = 100;
-const MIN_EVENTS = 20;
+const MIN_EVENTS = 5;
 
 const AGE_NORMS: Record<string, { acc_ref: number; lat_ref: number; hes_ref: number }> = {
   '3-4': { acc_ref: 0.60, lat_ref: 2000, hes_ref: 5 },
