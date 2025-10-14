@@ -6,107 +6,54 @@ const openai = new OpenAI({
   dangerouslyAllowBrowser: true
 });
 
-interface FinalReportData {
+interface FinalReportResult {
   markdown_content: string;
-  skill_summary: {
-    memory: 'normal' | 'above' | 'below';
-    attention: 'normal' | 'above' | 'below';
-    logic: 'normal' | 'above' | 'below';
-    visual: 'normal' | 'above' | 'below';
-    pattern: 'normal' | 'above' | 'below';
-    creative: 'normal' | 'above' | 'below';
-  };
-  overall_trend: 'improving' | 'stable' | 'needs_support';
+  overall_score: number;
   ai_insights: string;
   recommendations: string[];
 }
 
 export class FinalReportService {
-  private static buildFinalReportPrompt(
-    miniReports: any[],
-    childAge: number,
-    childName: string
-  ): string {
-    const reportsText = miniReports
-      .map((report, index) => {
-        return `
-### التقرير ${index + 1}: ${report.game_type}
-${report.markdown_content}
----
-الدرجة: ${report.score}/100
-الملاحظات: ${report.feedback}
-نصيحة التحسين: ${report.improvement_tip}
-`;
-      })
-      .join('\n\n');
-
-    return `أنت خبير نفسي متخصص في تقييم النمو المعرفي الشامل للأطفال.
-
-الطفل: ${childName}
-العمر: ${childAge} سنة
-عدد الألعاب المكتملة: ${miniReports.length}
-
-فيما يلي التقارير الصغيرة من جميع الألعاب الـ 6:
-
-${reportsText}
-
-بناءً على هذه التقارير الصغيرة، قم بتحليل الملف المعرفي الكامل للطفل.
-
-قم بإرجاع تقرير شامل بتنسيق Markdown يحتوي على:
-
-## 📊 ملخص المهارات
-
-قيّم كل مهارة (طبيعي / فوق المتوسط / تحت المتوسط):
-- **الذاكرة:** [تقييم]
-- **التركيز:** [تقييم]
-- **المنطق:** [تقييم]
-- **الإدراك البصري:** [تقييم]
-- **التعرف على الأنماط:** [تقييم]
-- **الإبداع:** [تقييم]
-
-## 📈 الاتجاه العام
-
-[يتحسن / مستقر / يحتاج دعم]
-
-## 💡 رؤى الذكاء الاصطناعي
-
-[2-3 أسطر من الرؤى المتعمقة حول أنماط الأداء والنقاط القوية والمجالات التي تحتاج إلى تطوير]
-
-## 🌟 التوصيات الشخصية
-
-1. [توصية محددة وعملية]
-2. [توصية محددة وعملية]
-3. [توصية محددة وعملية]
-
-ملاحظات مهمة:
-- قارن الأداء مع معايير النمو للعمر ${childAge} سنة
-- كن محددًا وإيجابيًا ومشجعًا
-- قدم رؤى عملية يمكن للوالدين تطبيقها
-- حدد الأنماط عبر الألعاب المختلفة
-- استخدم لغة واضحة ومفهومة`;
-  }
-
   static async generateFinalReport(
     assessmentPathId: string,
     childId: string,
     miniReports: any[],
     childAge: number,
     childName: string
-  ): Promise<FinalReportData | null> {
+  ): Promise<FinalReportResult | null> {
     try {
       if (miniReports.length === 0) {
-        console.error('No mini reports provided for final report generation');
+        console.error('لا توجد تقارير صغيرة');
         return null;
       }
 
-      const prompt = this.buildFinalReportPrompt(miniReports, childAge, childName);
+      const reportsData = miniReports.map(r => ({
+        game: r.game_type,
+        score: r.score,
+        feedback: r.feedback
+      }));
+
+      const prompt = `أنت خبير نفسي متخصص في تقييم الأطفال.
+
+الطفل: ${childName}
+العمر: ${childAge} سنة
+
+النتائج من ${miniReports.length} ألعاب:
+${JSON.stringify(reportsData, null, 2)}
+
+أرجع JSON فقط بهذا الشكل:
+{
+  "overall_score": رقم من 0-100 (متوسط الدرجات),
+  "ai_insights": "تحليل شامل 2-3 جمل",
+  "recommendations": ["نصيحة 1", "نصيحة 2", "نصيحة 3"]
+}`;
 
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
-            content: 'أنت خبير في تقييم النمو المعرفي الشامل للأطفال. تقدم تحليلات شاملة ودقيقة بتنسيق Markdown.'
+            content: 'أنت خبير تقييم شامل للأطفال. أرجع JSON فقط.'
           },
           {
             role: 'user',
@@ -114,114 +61,50 @@ ${reportsText}
           }
         ],
         temperature: 0.7,
-        max_tokens: 1500
+        max_tokens: 500,
+        response_format: { type: 'json_object' }
       });
 
-      const markdownContent = completion.choices[0]?.message?.content || '';
+      const responseText = completion.choices[0]?.message?.content || '{}';
+      console.log('GPT Final Report Response:', responseText);
+      const result = JSON.parse(responseText);
 
-      // Extract skill summary
-      const skillSummary = this.extractSkillSummary(markdownContent);
+      const markdown = `# 📊 التقرير الشامل
 
-      // Extract overall trend
-      const overallTrend = this.extractOverallTrend(markdownContent);
+## الطفل: ${childName} (${childAge} سنة)
 
-      // Extract AI insights
-      const aiInsights = this.extractAIInsights(markdownContent);
+### 🎯 النتيجة الإجمالية
+**${result.overall_score}/100**
 
-      // Extract recommendations
-      const recommendations = this.extractRecommendations(markdownContent);
+### 💡 تحليل الذكاء الاصطناعي
+${result.ai_insights}
+
+### 🌟 التوصيات
+${(result.recommendations || []).map((r: string, i: number) => `${i + 1}. ${r}`).join('\n')}
+
+---
+
+### 📈 نتائج الألعاب الفردية
+
+${miniReports.map(r => `**${r.game_type}:** ${r.score}/100 - ${r.feedback}`).join('\n\n')}`;
 
       return {
-        markdown_content: markdownContent,
-        skill_summary: skillSummary,
-        overall_trend: overallTrend,
-        ai_insights: aiInsights,
-        recommendations
+        markdown_content: markdown,
+        overall_score: result.overall_score || 50,
+        ai_insights: result.ai_insights || 'لا توجد رؤى متاحة',
+        recommendations: result.recommendations || []
       };
+
     } catch (error) {
-      console.error('Error generating final report:', error);
-      return null;
+      console.error('خطأ في توليد التقرير الشامل:', error);
+      throw error;
     }
-  }
-
-  private static extractSkillSummary(markdown: string): any {
-    const summary: any = {
-      memory: 'normal',
-      attention: 'normal',
-      logic: 'normal',
-      visual: 'normal',
-      pattern: 'normal',
-      creative: 'normal'
-    };
-
-    const skillMappings = {
-      'الذاكرة': 'memory',
-      'التركيز': 'attention',
-      'المنطق': 'logic',
-      'الإدراك البصري': 'visual',
-      'التعرف على الأنماط': 'pattern',
-      'الأنماط': 'pattern',
-      'الإبداع': 'creative'
-    };
-
-    const statusMappings: Record<string, 'normal' | 'above' | 'below'> = {
-      'طبيعي': 'normal',
-      'فوق المتوسط': 'above',
-      'تحت المتوسط': 'below',
-      'ممتاز': 'above',
-      'جيد': 'normal',
-      'يحتاج تحسين': 'below'
-    };
-
-    Object.entries(skillMappings).forEach(([arabicName, englishKey]) => {
-      const regex = new RegExp(`\\*\\*${arabicName}:\\*\\*\\s*(.+?)(?=\\n|$)`, 'i');
-      const match = markdown.match(regex);
-      if (match) {
-        const statusText = match[1].trim();
-        Object.entries(statusMappings).forEach(([arabicStatus, englishStatus]) => {
-          if (statusText.includes(arabicStatus)) {
-            summary[englishKey] = englishStatus;
-          }
-        });
-      }
-    });
-
-    return summary;
-  }
-
-  private static extractOverallTrend(markdown: string): 'improving' | 'stable' | 'needs_support' {
-    const trendSection = markdown.match(/##\s*📈\s*الاتجاه العام\s*\n+(.+?)(?=\n##|$)/s);
-    if (trendSection) {
-      const text = trendSection[1].toLowerCase();
-      if (text.includes('يتحسن') || text.includes('تحسن')) return 'improving';
-      if (text.includes('يحتاج دعم') || text.includes('يحتاج إلى دعم')) return 'needs_support';
-    }
-    return 'stable';
-  }
-
-  private static extractAIInsights(markdown: string): string {
-    const insightsSection = markdown.match(/##\s*💡\s*رؤى الذكاء الاصطناعي\s*\n+(.+?)(?=\n##|$)/s);
-    return insightsSection ? insightsSection[1].trim() : 'لا توجد رؤى متاحة';
-  }
-
-  private static extractRecommendations(markdown: string): string[] {
-    const recommendationsSection = markdown.match(/##\s*🌟\s*التوصيات الشخصية\s*\n+([\s\S]+?)(?=\n##|$)/);
-    if (recommendationsSection) {
-      const text = recommendationsSection[1];
-      const recommendations = text
-        .split(/\n/)
-        .filter(line => line.match(/^\d+\./))
-        .map(line => line.replace(/^\d+\.\s*/, '').trim())
-        .filter(rec => rec.length > 0);
-      return recommendations;
-    }
-    return [];
   }
 
   static async saveFinalReport(
     assessmentPathId: string,
     childId: string,
-    reportData: FinalReportData
+    reportData: FinalReportResult
   ): Promise<string | null> {
     try {
       const { data, error } = await supabase
@@ -230,23 +113,24 @@ ${reportsText}
           assessment_path_id: assessmentPathId,
           child_id: childId,
           markdown_content: reportData.markdown_content,
-          skill_summary: reportData.skill_summary,
-          overall_trend: reportData.overall_trend,
+          skill_summary: {},
+          overall_trend: 'stable',
           ai_insights: reportData.ai_insights,
           recommendations: reportData.recommendations
         })
         .select('id')
-        .maybeSingle();
+        .single();
 
       if (error) {
-        console.error('Error saving final report:', error);
-        return null;
+        console.error('خطأ في حفظ التقرير الشامل:', error);
+        throw error;
       }
 
-      return data?.id || null;
+      console.log('تم حفظ التقرير الشامل بنجاح:', data.id);
+      return data.id;
     } catch (error) {
-      console.error('Error saving final report:', error);
-      return null;
+      console.error('خطأ في حفظ التقرير الشامل:', error);
+      throw error;
     }
   }
 
@@ -256,16 +140,14 @@ ${reportsText}
         .from('final_reports')
         .select('*')
         .eq('assessment_path_id', assessmentPathId)
-        .maybeSingle();
+        .single();
 
       if (error) {
-        console.error('Error fetching final report:', error);
         return null;
       }
 
       return data;
     } catch (error) {
-      console.error('Error fetching final report:', error);
       return null;
     }
   }
@@ -279,13 +161,13 @@ ${reportsText}
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching final reports:', error);
+        console.error('خطأ في جلب التقارير الشاملة:', error);
         return [];
       }
 
       return data || [];
     } catch (error) {
-      console.error('Error fetching final reports:', error);
+      console.error('خطأ في جلب التقارير الشاملة:', error);
       return [];
     }
   }

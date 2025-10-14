@@ -205,102 +205,74 @@ function App() {
           game_type: selectedGame,
           assessment_path_id: currentPath.id,
           score: gameData.score || 0,
-          duration_seconds: gameData.duration,
-          raw_data: gameData.rawData,
+          duration_seconds: gameData.duration || 0,
+          raw_data: gameData.rawData || {},
           completed: true,
-          hesitation_count: gameData.hesitationCount || 0,
-          pause_count: gameData.pauseCount || 0,
+          hesitation_count: 0,
+          pause_count: 0,
           started_at: new Date(startTime).toISOString(),
-          average_response_time: gameData.averageResponseTime || 0,
-          accuracy_percentage: gameData.accuracyPercentage || 0,
-          total_moves: gameData.totalMoves || 0,
+          average_response_time: 0,
+          accuracy_percentage: gameData.score || 0,
+          total_moves: 0,
         })
         .select()
         .single();
 
-      if (sessionError) throw sessionError;
-
-      if (childProfile) {
-        try {
-          await BehaviorTrackingService.logGameComplete(
-            childProfile.id,
-            session.id,
-            selectedGame,
-            gameData.duration
-          );
-        } catch (error) {
-          console.error('Error logging behavior:', error);
-        }
+      if (sessionError) {
+        console.error('خطأ في حفظ الجلسة:', sessionError);
+        throw sessionError;
       }
+
+      console.log('تم حفظ جلسة اللعبة:', session.id);
 
       let miniReportData = null;
       if (childProfile) {
-        miniReportData = await MiniReportService.generateMiniReport(
-          session.id,
-          childProfile.id,
-          selectedGame,
-          session,
-          childAge
-        );
-
-        if (miniReportData) {
-          await MiniReportService.saveMiniReport(
+        try {
+          console.log('جاري إنشاء التقرير الصغير...');
+          miniReportData = await MiniReportService.generateMiniReport(
             session.id,
             childProfile.id,
             selectedGame,
-            miniReportData
+            session,
+            childAge
           );
+
+          if (miniReportData) {
+            console.log('جاري حفظ التقرير الصغير...');
+            await MiniReportService.saveMiniReport(
+              session.id,
+              childProfile.id,
+              selectedGame,
+              miniReportData
+            );
+            console.log('تم حفظ التقرير الصغير بنجاح');
+          }
+        } catch (error) {
+          console.error('خطأ في التقرير الصغير:', error);
         }
       }
-
-      const gptAnalysis = await generateMiniReport(session, childAge);
-
-      const { data: report, error: reportError } = await supabase
-        .from('game_reports')
-        .insert({
-          session_id: session.id,
-          analysis: gptAnalysis.analysisText,
-          performance_score: gptAnalysis.performanceScore,
-          status: gptAnalysis.performanceLevel === 'above_normal' ? 'ممتاز' : gptAnalysis.performanceLevel === 'normal' ? 'جيد' : 'يحتاج تحسين',
-          sub_scores: {},
-          reasons: gptAnalysis.observations,
-          tip: gptAnalysis.quickTip,
-          flags: [],
-          strengths: gptAnalysis.observations,
-          recommendations: [gptAnalysis.quickTip],
-          level: gptAnalysis.performanceLevel,
-        })
-        .select()
-        .single();
-
-      if (reportError) throw reportError;
 
       await assessmentPathManager.addGameToPath(currentPath.id, selectedGame, session.id);
       await assessmentPathManager.updatePathScore(currentPath.id, {
         score: gameData.score || 0,
-        duration: gameData.duration,
+        duration: gameData.duration || 0,
       });
 
       const updatedPath = await assessmentPathManager.getPathById(currentPath.id);
       setCurrentPath(updatedPath);
-      setCurrentReport(report);
+
       setCurrentMiniReport({
         game: selectedGame,
-        score: miniReportData?.score || gptAnalysis.performanceScore,
-        status: gptAnalysis.performanceLevel === 'above_normal' ? 'ممتاز' : gptAnalysis.performanceLevel === 'normal' ? 'جيد' : 'يحتاج تحسين',
-        subScores: {},
-        reasons: gptAnalysis.observations,
-        tip: miniReportData?.improvement_tip || gptAnalysis.quickTip,
-        flags: [],
+        score: miniReportData?.score || gameData.score || 50,
+        status: miniReportData?.score >= 80 ? 'ممتاز' : miniReportData?.score >= 60 ? 'جيد' : 'يحتاج تحسين',
+        reasons: miniReportData ? [miniReportData.feedback] : ['أداء جيد'],
+        tip: miniReportData?.improvement_tip || 'استمر في الممارسة',
         markdownContent: miniReportData?.markdown_content || '',
-        gptAnalysis: {
-          analysis: gptAnalysis.analysisText,
-          strengths: gptAnalysis.observations,
-          recommendations: [gptAnalysis.quickTip],
-        }
+        gptAnalysis: null
       });
     } catch (error) {
-      console.error('Error handling game completion:', error);
+      console.error('خطأ في معالجة إكمال اللعبة:', error);
+      alert('حدث خطأ في حفظ النتيجة. يرجى المحاولة مرة أخرى.');
       setCurrentScreen('game-sequence');
     }
   };
@@ -353,6 +325,8 @@ function App() {
     setCurrentScreen('final-report-loading');
 
     try {
+      console.log('بدء إنشاء التقرير الشامل...');
+
       const { data: childProfile } = await supabase
         .from('children_profiles')
         .select('*')
@@ -363,25 +337,38 @@ function App() {
         ? Math.floor((Date.now() - new Date(childProfile.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000))
         : Math.floor((Date.now() - new Date(child.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000));
 
+      const childName = childProfile?.child_name || child.name;
+
       if (childProfile) {
         const miniReports = await MiniReportService.getMiniReportsByPathId(currentPath.id);
+        console.log('عدد التقارير الصغيرة:', miniReports.length);
 
         if (miniReports.length > 0) {
-          const finalReportData = await FinalReportService.generateFinalReport(
-            currentPath.id,
-            childProfile.id,
-            miniReports,
-            childAge,
-            childProfile.child_name
-          );
-
-          if (finalReportData) {
-            await FinalReportService.saveFinalReport(
+          try {
+            console.log('جاري إنشاء التقرير الشامل...');
+            const finalReportData = await FinalReportService.generateFinalReport(
               currentPath.id,
               childProfile.id,
-              finalReportData
+              miniReports,
+              childAge,
+              childName
             );
+
+            if (finalReportData) {
+              console.log('جاري حفظ التقرير الشامل...');
+              await FinalReportService.saveFinalReport(
+                currentPath.id,
+                childProfile.id,
+                finalReportData
+              );
+              console.log('تم حفظ التقرير الشامل بنجاح');
+            }
+          } catch (error) {
+            console.error('خطأ في التقرير الشامل:', error);
+            alert('حدث خطأ في إنشاء التقرير الشامل');
           }
+        } else {
+          console.warn('لا توجد تقارير صغيرة لإنشاء التقرير الشامل');
         }
       }
 
