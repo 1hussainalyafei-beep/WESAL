@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Heart, Mail, Lock, User } from 'lucide-react';
+import { Heart, Mail, Lock, User, Calendar, Phone, Baby } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 interface AuthPageProps {
   onVisitorMode?: () => void;
@@ -10,7 +11,11 @@ export function AuthPage({ onVisitorMode }: AuthPageProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const [parentName, setParentName] = useState('');
+  const [childName, setChildName] = useState('');
+  const [childBirthDate, setChildBirthDate] = useState('');
+  const [childGender, setChildGender] = useState<'male' | 'female' | 'other'>('male');
+  const [parentPhone, setParentPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { signIn, signUp } = useAuth();
@@ -22,12 +27,34 @@ export function AuthPage({ onVisitorMode }: AuthPageProps) {
 
     try {
       if (isSignUp) {
-        if (!name) {
-          setError('يرجى إدخال الاسم');
+        if (!parentName || !childName || !childBirthDate) {
+          setError('يرجى إدخال جميع البيانات المطلوبة');
           setLoading(false);
           return;
         }
-        await signUp(email, password);
+
+        const { data: authData, error: authError } = await signUp(email, password);
+
+        if (authError || !authData?.user) {
+          throw authError || new Error('فشل إنشاء الحساب');
+        }
+
+        const { error: profileError } = await supabase
+          .from('children_profiles')
+          .insert({
+            user_id: authData.user.id,
+            child_name: childName,
+            birth_date: childBirthDate,
+            gender: childGender,
+            parent_name: parentName,
+            parent_email: email,
+            parent_phone: parentPhone
+          });
+
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+          throw new Error('تم إنشاء الحساب ولكن فشل حفظ البيانات');
+        }
       } else {
         await signIn(email, password);
       }
@@ -70,22 +97,116 @@ export function AuthPage({ onVisitorMode }: AuthPageProps) {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
-              <div>
-                <label className="block text-sm font-semibold mb-2" style={{ color: '#212121' }}>
-                  الاسم
-                </label>
-                <div className="relative">
-                  <User className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="input-field pr-10"
-                    placeholder="أدخل اسمك"
-                    required
-                  />
+              <>
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: '#212121' }}>
+                    اسم ولي الأمر
+                  </label>
+                  <div className="relative">
+                    <User className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={parentName}
+                      onChange={(e) => setParentName(e.target.value)}
+                      className="input-field pr-10"
+                      placeholder="أدخل اسم ولي الأمر"
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: '#212121' }}>
+                    اسم الطفل
+                  </label>
+                  <div className="relative">
+                    <Baby className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={childName}
+                      onChange={(e) => setChildName(e.target.value)}
+                      className="input-field pr-10"
+                      placeholder="أدخل اسم الطفل"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: '#212121' }}>
+                    تاريخ ميلاد الطفل
+                  </label>
+                  <div className="relative">
+                    <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="date"
+                      value={childBirthDate}
+                      onChange={(e) => setChildBirthDate(e.target.value)}
+                      className="input-field pr-10"
+                      required
+                      max={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: '#212121' }}>
+                    جنس الطفل
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setChildGender('male')}
+                      className={`py-2 px-4 rounded-xl font-semibold transition-all ${
+                        childGender === 'male'
+                          ? 'bg-[#5B4B9D] text-white'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      ذكر
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setChildGender('female')}
+                      className={`py-2 px-4 rounded-xl font-semibold transition-all ${
+                        childGender === 'female'
+                          ? 'bg-[#5B4B9D] text-white'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      أنثى
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setChildGender('other')}
+                      className={`py-2 px-4 rounded-xl font-semibold transition-all ${
+                        childGender === 'other'
+                          ? 'bg-[#5B4B9D] text-white'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      آخر
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: '#212121' }}>
+                    رقم الهاتف (اختياري)
+                  </label>
+                  <div className="relative">
+                    <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="tel"
+                      value={parentPhone}
+                      onChange={(e) => setParentPhone(e.target.value)}
+                      className="input-field pr-10"
+                      placeholder="05xxxxxxxx"
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+              </>
             )}
 
             <div>

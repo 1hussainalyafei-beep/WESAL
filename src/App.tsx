@@ -22,6 +22,11 @@ import { AIAssistantPage } from './components/AIAssistant/AIAssistantPage';
 import { supabase } from './lib/supabase';
 import { generateMiniReport, generateComprehensiveReport } from './services/openaiService';
 import { assessmentPathManager } from './services/assessmentPathService';
+import { MiniReportService } from './services/miniReportService';
+import { FinalReportService } from './services/finalReportService';
+import { BehaviorTrackingService } from './services/behaviorTrackingService';
+import { MiniReportAnimation } from './components/Analysis/MiniReportAnimation';
+import { FinalReportAnimation } from './components/Analysis/FinalReportAnimation';
 import { GameType, Child, AssessmentPath, GameReport as GameReportType } from './types';
 import { Loader2 } from 'lucide-react';
 
@@ -63,6 +68,15 @@ function App() {
       setCurrentScreen('landing');
     }
   }, [user]);
+
+  useEffect(() => {
+    if (currentScreen === 'analyzing') {
+      const timer = setTimeout(() => {
+        setCurrentScreen('mini-report');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [currentScreen]);
 
   const loadOrCreateChild = async () => {
     if (!user) return;
@@ -149,12 +163,16 @@ function App() {
     setCurrentGameName(gameNames[gameType]);
     setCurrentScreen('game');
 
-    if (child) {
-      supabase.from('behavior_logs').insert({
-        child_id: child.id,
-        event_type: 'game_start',
-        game_type: gameType,
-      });
+    if (child && user) {
+      const { data: childProfile } = await supabase
+        .from('children_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (childProfile) {
+        await BehaviorTrackingService.logGameStart(childProfile.id, '', gameType);
+      }
     }
   };
 
@@ -165,9 +183,16 @@ function App() {
 
     try {
       const startTime = Date.now();
-      const childAge = Math.floor(
-        (Date.now() - new Date(child.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000)
-      );
+
+      const { data: childProfile } = await supabase
+        .from('children_profiles')
+        .select('*')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+
+      const childAge = childProfile
+        ? Math.floor((Date.now() - new Date(childProfile.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000))
+        : Math.floor((Date.now() - new Date(child.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000));
 
       const { data: session, error: sessionError } = await supabase
         .from('game_sessions')
@@ -179,12 +204,43 @@ function App() {
           duration_seconds: gameData.duration,
           raw_data: gameData.rawData,
           completed: true,
+          hesitation_count: gameData.hesitationCount || 0,
+          pause_count: gameData.pauseCount || 0,
           started_at: new Date(startTime).toISOString(),
+          average_response_time: gameData.averageResponseTime || 0,
+          accuracy_percentage: gameData.accuracyPercentage || 0,
+          total_moves: gameData.totalMoves || 0,
         })
         .select()
         .single();
 
       if (sessionError) throw sessionError;
+
+      if (childProfile) {
+        await BehaviorTrackingService.logGameComplete(
+          childProfile.id,
+          session.id,
+          selectedGame,
+          gameData.duration
+        );
+      }
+
+      const miniReportData = await MiniReportService.generateMiniReport(
+        session.id,
+        childProfile?.id || child.id,
+        selectedGame,
+        session,
+        childAge
+      );
+
+      if (miniReportData && childProfile) {
+        await MiniReportService.saveMiniReport(
+          session.id,
+          childProfile.id,
+          selectedGame,
+          miniReportData
+        );
+      }
 
       const gptAnalysis = await generateMiniReport(session, childAge);
 
@@ -214,24 +270,18 @@ function App() {
         duration: gameData.duration,
       });
 
-      await supabase.from('behavior_logs').insert({
-        child_id: child.id,
-        event_type: 'game_complete',
-        game_type: selectedGame,
-        metadata: { score: gptAnalysis.performanceScore, duration: gameData.duration },
-      });
-
       const updatedPath = await assessmentPathManager.getPathById(currentPath.id);
       setCurrentPath(updatedPath);
       setCurrentReport(report);
       setCurrentMiniReport({
         game: selectedGame,
-        score: gptAnalysis.performanceScore,
+        score: miniReportData?.score || gptAnalysis.performanceScore,
         status: gptAnalysis.performanceLevel === 'above_normal' ? 'ممتاز' : gptAnalysis.performanceLevel === 'normal' ? 'جيد' : 'يحتاج تحسين',
         subScores: {},
         reasons: gptAnalysis.observations,
-        tip: gptAnalysis.quickTip,
+        tip: miniReportData?.improvement_tip || gptAnalysis.quickTip,
         flags: [],
+        markdownContent: miniReportData?.markdown_content || '',
         gptAnalysis: {
           analysis: gptAnalysis.analysisText,
           strengths: gptAnalysis.observations,
@@ -287,11 +337,51 @@ function App() {
   };
 
   const handleGenerateFinalReport = async () => {
-    if (!child || !currentPath) return;
+    if (!child || !currentPath || !user) return;
 
     setCurrentScreen('final-report-loading');
 
     try {
+      const { data: childProfile } = await supabase
+        .from('children_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!childProfile) {
+        console.error('Child profile not found');
+        setCurrentScreen('game-sequence');
+        return;
+      }
+
+      const miniReports = await MiniReportService.getMiniReportsByPathId(currentPath.id);
+
+      if (miniReports.length === 0) {
+        console.error('No mini reports found');
+        setCurrentScreen('game-sequence');
+        return;
+      }
+
+      const childAge = Math.floor(
+        (Date.now() - new Date(childProfile.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000)
+      );
+
+      const finalReportData = await FinalReportService.generateFinalReport(
+        currentPath.id,
+        childProfile.id,
+        miniReports,
+        childAge,
+        childProfile.child_name
+      );
+
+      if (finalReportData) {
+        await FinalReportService.saveFinalReport(
+          currentPath.id,
+          childProfile.id,
+          finalReportData
+        );
+      }
+
       const { data: sessions, error: sessionsError } = await supabase
         .from('game_sessions')
         .select('*')
@@ -307,10 +397,6 @@ function App() {
 
       if (reportsError) throw reportsError;
 
-      const childAge = Math.floor(
-        (Date.now() - new Date(child.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000)
-      );
-
       const miniReportsData = allReports.map((report, index) => ({
         game_type: sessions[index]?.game_type as GameType,
         performance_score: report.performance_score,
@@ -321,7 +407,7 @@ function App() {
 
       const comprehensiveAnalysis = await generateComprehensiveReport(
         miniReportsData,
-        child.name,
+        childProfile.child_name,
         childAge
       );
 
@@ -402,17 +488,7 @@ function App() {
 
   if (currentScreen === 'final-report-loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center page-transition" style={{ backgroundColor: 'var(--gray-50)' }}>
-        <div className="card text-center max-w-md p-8">
-          <Loader2 className="w-16 h-16 mx-auto mb-4 animate-spin" style={{ color: 'var(--primary-purple)' }} />
-          <h2 className="text-2xl font-bold mb-2" style={{ color: 'var(--primary-purple)' }}>
-            جارٍ إنشاء التقرير الشامل...
-          </h2>
-          <p style={{ color: 'var(--gray-400)' }}>
-            الذكاء الاصطناعي يقوم بتحليل جميع نتائجك
-          </p>
-        </div>
-      </div>
+      <FinalReportAnimation gamesCompleted={currentPath?.completed_games?.length || 6} />
     );
   }
 
@@ -449,12 +525,7 @@ function App() {
       return renderGame();
 
     case 'analyzing':
-      return (
-        <AnalyzingScreen
-          gameName={currentGameName}
-          onComplete={handleAnalyzingComplete}
-        />
-      );
+      return <MiniReportAnimation gameName={currentGameName} />;
 
     case 'mini-report':
       if (!currentMiniReport) return null;
@@ -469,6 +540,7 @@ function App() {
           onHome={handleMiniReportHome}
           onReplay={handleMiniReportReplay}
           showNext={currentPath?.path_type === 'all'}
+          markdownContent={currentMiniReport.markdownContent}
           gptAnalysis={currentMiniReport.gptAnalysis}
         />
       );

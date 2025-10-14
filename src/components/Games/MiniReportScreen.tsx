@@ -1,4 +1,5 @@
 import { Home, Play, ArrowLeft } from 'lucide-react';
+import { MarkdownRenderer } from '../Common/MarkdownRenderer';
 
 interface MiniReportScreenProps {
   score: number;
@@ -10,6 +11,7 @@ interface MiniReportScreenProps {
   onHome: () => void;
   onReplay: () => void;
   showNext: boolean;
+  markdownContent?: string;
   gptAnalysis?: {
     analysis: string;
     strengths: string[];
@@ -27,6 +29,7 @@ export function MiniReportScreen({
   onHome,
   onReplay,
   showNext,
+  markdownContent,
   gptAnalysis,
 }: MiniReportScreenProps) {
   const getScoreColor = (score: number) => {
@@ -77,6 +80,13 @@ export function MiniReportScreen({
         </div>
 
         <div className="space-y-6">
+          {markdownContent && (
+            <div className="rounded-2xl p-6"
+                 style={{ backgroundColor: '#F8F9FA', border: '2px solid #5B4B9D' }}>
+              <MarkdownRenderer content={markdownContent} />
+            </div>
+          )}
+
           {gptAnalysis && (
             <div className="rounded-2xl p-6"
                  style={{ backgroundColor: '#E3F2FD', border: '2px solid #42A5F5' }}>
