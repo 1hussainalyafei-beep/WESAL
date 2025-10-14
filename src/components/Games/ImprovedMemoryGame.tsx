@@ -10,11 +10,21 @@ interface ImprovedMemoryGameProps {
 interface GameData {
   score: number;
   duration: number;
+  accuracyPercentage: number;
+  averageResponseTime: number;
+  totalMoves: number;
+  hesitationCount: number;
+  pauseCount: number;
   rawData: {
     correctPairs: number;
     totalAttempts: number;
     averageResponseTime: number;
     mistakes: number;
+    events: Array<{timestamp: number; type: string; value: any}>;
+    cardFlips: number;
+    matchingAccuracy: number;
+    gameStartTime: number;
+    gameEndTime: number;
   };
 }
 
@@ -26,31 +36,65 @@ export function ImprovedMemoryGame({ onComplete, onBack, onSkip }: ImprovedMemor
   const [matched, setMatched] = useState<number[]>([]);
   const [attempts, setAttempts] = useState(0);
   const [startTime] = useState(Date.now());
+  const [gameStartTime] = useState(Date.now());
   const [responseTimes, setResponseTimes] = useState<number[]>([]);
   const [lastFlipTime, setLastFlipTime] = useState<number>(0);
   const [events, setEvents] = useState<Array<{timestamp: number; type: string; value: any}>>([]);
+  const [cardFlips, setCardFlips] = useState(0);
+  const [hesitations, setHesitations] = useState(0);
+  const [pauses, setPauses] = useState(0);
 
   useEffect(() => {
     const shuffled = [...emojis, ...emojis].sort(() => Math.random() - 0.5);
     setCards(shuffled);
+    
+    // تسجيل بداية اللعبة
+    setEvents([{
+      timestamp: Date.now(),
+      type: 'game_start',
+      value: { totalCards: shuffled.length }
+    }]);
   }, []);
 
   useEffect(() => {
     if (matched.length === cards.length && cards.length > 0) {
-      const duration = Math.floor((Date.now() - startTime) / 1000);
+      const gameEndTime = Date.now();
+      const duration = Math.floor((gameEndTime - gameStartTime) / 1000);
       const avgResponseTime = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
-      const score = Math.max(0, 100 - (attempts * 5) - Math.floor(duration / 2));
+      const matchingAccuracy = (matched.length / 2) / attempts;
+      const score = Math.max(0, Math.min(100, Math.floor(matchingAccuracy * 100) - Math.floor(duration / 10)));
+      
+      // تسجيل نهاية اللعبة
+      const finalEvents = [...events, {
+        timestamp: gameEndTime,
+        type: 'game_complete',
+        value: { 
+          finalScore: score,
+          totalDuration: duration,
+          totalAttempts: attempts,
+          correctPairs: matched.length / 2
+        }
+      }];
 
       setTimeout(() => {
         onComplete({
           score: Math.min(100, score),
           duration,
+          accuracyPercentage: Math.round(matchingAccuracy * 100),
+          averageResponseTime: Math.round(avgResponseTime || 0),
+          totalMoves: cardFlips,
+          hesitationCount: hesitations,
+          pauseCount: pauses,
           rawData: {
             correctPairs: matched.length / 2,
             totalAttempts: attempts,
             averageResponseTime: Math.floor(avgResponseTime),
             mistakes: attempts - (matched.length / 2),
-            events: events,
+            events: finalEvents,
+            cardFlips,
+            matchingAccuracy: Math.round(matchingAccuracy * 100),
+            gameStartTime,
+            gameEndTime,
           },
         });
       }, 1000);
@@ -63,22 +107,50 @@ export function ImprovedMemoryGame({ onComplete, onBack, onSkip }: ImprovedMemor
     }
 
     const now = Date.now();
+    setCardFlips(prev => prev + 1);
+    
+    // حساب التردد
     if (lastFlipTime > 0) {
-      setResponseTimes([...responseTimes, now - lastFlipTime]);
+      const responseTime = now - lastFlipTime;
+      setResponseTimes([...responseTimes, responseTime]);
+      
+      // إذا كان وقت الاستجابة أكثر من 3 ثواني، يعتبر تردد
+      if (responseTime > 3000) {
+        setHesitations(prev => prev + 1);
+      }
     }
     setLastFlipTime(now);
 
     const newFlipped = [...flipped, index];
     setFlipped(newFlipped);
+    
+    // تسجيل النقرة
+    setEvents(prev => [...prev, {
+      timestamp: now,
+      type: 'card_flip',
+      value: { 
+        cardIndex: index, 
+        cardValue: cards[index],
+        responseTime: lastFlipTime > 0 ? now - lastFlipTime : 0,
+        flippedCount: newFlipped.length
+      }
+    }]);
 
     if (newFlipped.length === 2) {
       setAttempts(attempts + 1);
       const isMatch = cards[newFlipped[0]] === cards[newFlipped[1]];
-
-      setEvents([...events, {
+      
+      // تسجيل محاولة المطابقة
+      setEvents(prev => [...prev, {
         timestamp: now,
         type: 'match',
-        value: { correct: isMatch, responseTime: now - lastFlipTime }
+        value: { 
+          correct: isMatch, 
+          card1: cards[newFlipped[0]],
+          card2: cards[newFlipped[1]],
+          attemptNumber: attempts + 1,
+          responseTime: now - lastFlipTime
+        }
       }]);
 
       if (isMatch) {
@@ -87,12 +159,6 @@ export function ImprovedMemoryGame({ onComplete, onBack, onSkip }: ImprovedMemor
       } else {
         setTimeout(() => setFlipped([]), 1000);
       }
-    } else {
-      setEvents([...events, {
-        timestamp: now,
-        type: 'click',
-        value: { index, responseTime: lastFlipTime > 0 ? now - lastFlipTime : 0 }
-      }]);
     }
   };
 

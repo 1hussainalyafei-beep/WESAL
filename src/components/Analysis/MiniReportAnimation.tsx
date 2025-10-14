@@ -7,13 +7,28 @@ interface MiniReportAnimationProps {
 
 export function MiniReportAnimation({ gameName }: MiniReportAnimationProps) {
   const [dots, setDots] = useState('');
+  const [analysisStep, setAnalysisStep] = useState(0);
+  
+  const steps = [
+    'جمع البيانات من اللعبة...',
+    'تحليل الأداء والدقة...',
+    'مقارنة مع المعايير العمرية...',
+    'إنشاء التوصيات الشخصية...'
+  ];
 
   useEffect(() => {
     const interval = setInterval(() => {
       setDots(prev => (prev.length >= 3 ? '' : prev + '.'));
     }, 500);
+    
+    const stepInterval = setInterval(() => {
+      setAnalysisStep(prev => (prev + 1) % steps.length);
+    }, 800);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearInterval(stepInterval);
+    };
   }, []);
 
   return (
@@ -73,6 +88,12 @@ export function MiniReportAnimation({ gameName }: MiniReportAnimationProps) {
           <p className="text-lg text-white/90">
             {gameName}
           </p>
+          
+          <div className="mt-6 p-4 rounded-xl bg-white/10 backdrop-blur-sm">
+            <p className="text-white font-semibold">
+              {steps[analysisStep]}
+            </p>
+          </div>
 
           <div className="flex items-center justify-center gap-2 mt-6">
             <div className="w-2 h-2 bg-white rounded-full animate-bounce"

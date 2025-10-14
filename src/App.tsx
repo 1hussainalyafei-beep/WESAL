@@ -194,6 +194,7 @@ function App() {
         ? Math.floor((Date.now() - new Date(childProfile.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000))
         : Math.floor((Date.now() - new Date(child.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000));
 
+      // إنشاء جلسة اللعبة بالبيانات الحقيقية
       const { data: session, error: sessionError } = await supabase
         .from('game_sessions')
         .insert({
@@ -201,11 +202,12 @@ function App() {
           game_type: selectedGame,
           assessment_path_id: currentPath.id,
           score: gameData.score || 0,
-          duration_seconds: gameData.duration,
-          raw_data: gameData.rawData,
+          duration_seconds: gameData.duration || 0,
+          raw_data: gameData.rawData || {},
           completed: true,
           hesitation_count: gameData.hesitationCount || 0,
           pause_count: gameData.pauseCount || 0,
+          switch_count: 0,
           started_at: new Date(startTime).toISOString(),
           average_response_time: gameData.averageResponseTime || 0,
           accuracy_percentage: gameData.accuracyPercentage || 0,
@@ -216,6 +218,7 @@ function App() {
 
       if (sessionError) throw sessionError;
 
+      // تسجيل السلوك
       if (childProfile) {
         await BehaviorTrackingService.logGameComplete(
           childProfile.id,
@@ -225,6 +228,7 @@ function App() {
         );
       }
 
+      // إنشاء التقرير المصغر بالبيانات الحقيقية
       const miniReportData = await MiniReportService.generateMiniReport(
         session.id,
         childProfile?.id || child.id,
@@ -233,6 +237,7 @@ function App() {
         childAge
       );
 
+      // حفظ التقرير المصغر
       if (miniReportData && childProfile) {
         await MiniReportService.saveMiniReport(
           session.id,
@@ -242,8 +247,10 @@ function App() {
         );
       }
 
+      // إنشاء تحليل GPT (للتوافق مع النظام القديم)
       const gptAnalysis = await generateMiniReport(session, childAge);
 
+      // حفظ تقرير اللعبة
       const { data: report, error: reportError } = await supabase
         .from('game_reports')
         .insert({
@@ -264,6 +271,7 @@ function App() {
 
       if (reportError) throw reportError;
 
+      // تحديث مسار التقييم
       await assessmentPathManager.addGameToPath(currentPath.id, selectedGame, session.id);
       await assessmentPathManager.updatePathScore(currentPath.id, {
         score: gameData.score || 0,
@@ -273,9 +281,11 @@ function App() {
       const updatedPath = await assessmentPathManager.getPathById(currentPath.id);
       setCurrentPath(updatedPath);
       setCurrentReport(report);
+      
+      // إعداد التقرير المصغر للعرض
       setCurrentMiniReport({
         game: selectedGame,
-        score: miniReportData?.score || gptAnalysis.performanceScore,
+        score: miniReportData?.score || gptAnalysis.performanceScore || gameData.score || 0,
         status: gptAnalysis.performanceLevel === 'above_normal' ? 'ممتاز' : gptAnalysis.performanceLevel === 'normal' ? 'جيد' : 'يحتاج تحسين',
         subScores: {},
         reasons: gptAnalysis.observations,

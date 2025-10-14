@@ -16,19 +16,42 @@ export function ImprovedAttentionGame({ onComplete, onBack, onSkip }: ImprovedAt
   const [correct, setCorrect] = useState(0);
   const [incorrect, setIncorrect] = useState(0);
   const [missed, setMissed] = useState(0);
-  const [startTime] = useState(Date.now());
+  const [gameStartTime] = useState(Date.now());
   const [responseTimes, setResponseTimes] = useState<number[]>([]);
   const [roundStartTime, setRoundStartTime] = useState(Date.now());
+  const [hesitations, setHesitations] = useState(0);
+  const [falsePositives, setFalsePositives] = useState(0);
   const totalRounds = 12;
   const [events, setEvents] = useState<Array<{timestamp: number; type: string; value: any}>>([]);
+
+  useEffect(() => {
+    // تسجيل بداية اللعبة
+    setEvents([{
+      timestamp: Date.now(),
+      type: 'game_start',
+      value: { targetSymbol, totalRounds }
+    }]);
+  }, []);
 
   useEffect(() => {
     if (round < totalRounds) {
       const timer = setTimeout(() => {
         const randomSymbol = symbols[Math.floor(Math.random() * symbols.length)];
         setCurrentSymbol(randomSymbol);
-        setRoundStartTime(Date.now());
+        const now = Date.now();
+        setRoundStartTime(now);
         setRound(round + 1);
+        
+        // تسجيل ظهور الرمز
+        setEvents(prev => [...prev, {
+          timestamp: now,
+          type: 'symbol_shown',
+          value: { 
+            symbol: randomSymbol, 
+            isTarget: randomSymbol === targetSymbol,
+            roundNumber: round + 1
+          }
+        }]);
       }, 1000);
       return () => clearTimeout(timer);
     } else if (round === totalRounds) {
@@ -41,39 +64,104 @@ export function ImprovedAttentionGame({ onComplete, onBack, onSkip }: ImprovedAt
     const responseTime = now - roundStartTime;
     setResponseTimes([...responseTimes, responseTime]);
 
+    // حساب التردد (إذا كان وقت الاستجابة أكثر من ثانيتين)
+    if (responseTime > 2000) {
+      setHesitations(prev => prev + 1);
+    }
+
     const isCorrect = currentSymbol === targetSymbol;
+    const isTarget = currentSymbol === targetSymbol;
+    
     if (isCorrect) {
       setCorrect(correct + 1);
     } else {
       setIncorrect(incorrect + 1);
+      // إذا ضغط على رمز غير مستهدف
+      if (!isTarget) {
+        setFalsePositives(prev => prev + 1);
+      }
     }
 
-    setEvents([...events, {
+    // تسجيل النقرة
+    setEvents(prev => [...prev, {
       timestamp: now,
       type: 'click',
-      value: { correct: isCorrect, isTarget: currentSymbol === targetSymbol, responseTime }
+      value: { 
+        correct: isCorrect, 
+        isTarget,
+        symbol: currentSymbol,
+        responseTime,
+        roundNumber: round,
+        hesitation: responseTime > 2000
+      }
     }]);
 
     setCurrentSymbol('');
   };
 
+  // تسجيل الرموز المفقودة
+  useEffect(() => {
+    if (currentSymbol && currentSymbol === targetSymbol) {
+      const timer = setTimeout(() => {
+        if (currentSymbol === targetSymbol) {
+          setMissed(missed + 1);
+          setEvents(prev => [...prev, {
+            timestamp: Date.now(),
+            type: 'missed_target',
+            value: { 
+              symbol: currentSymbol,
+              roundNumber: round
+            }
+          }]);
+        }
+        setCurrentSymbol('');
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [currentSymbol, round, missed]);
+
   const finishGame = () => {
-    const duration = Math.floor((Date.now() - startTime) / 1000);
+    const gameEndTime = Date.now();
+    const duration = Math.floor((gameEndTime - gameStartTime) / 1000);
     const avgResponseTime = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
-    const accuracy = (correct / (correct + incorrect + missed)) * 100;
+    const totalResponses = correct + incorrect + missed;
+    const accuracy = totalResponses > 0 ? (correct / totalResponses) * 100 : 0;
     const finalScore = Math.min(100, Math.floor(accuracy));
+    
+    // تسجيل نهاية اللعبة
+    const finalEvents = [...events, {
+      timestamp: gameEndTime,
+      type: 'game_complete',
+      value: {
+        finalScore,
+        totalDuration: duration,
+        correct,
+        incorrect,
+        missed,
+        accuracy,
+        avgResponseTime
+      }
+    }];
 
     setTimeout(() => {
       onComplete({
         score: finalScore,
         duration,
+        accuracyPercentage: Math.round(accuracy),
+        averageResponseTime: Math.round(avgResponseTime || 0),
+        totalMoves: correct + incorrect,
+        hesitationCount: hesitations,
+        pauseCount: 0,
         rawData: {
           correct,
           incorrect,
           missed,
           accuracy,
           averageResponseTime: Math.floor(avgResponseTime),
-          events: events,
+          falsePositives,
+          events: finalEvents,
+          gameStartTime,
+          gameEndTime,
         },
       });
     }, 500);

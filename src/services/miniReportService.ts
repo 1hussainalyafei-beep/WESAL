@@ -18,6 +18,7 @@ interface MiniReportData {
     attempts?: number;
     hesitation_count?: number;
     completion_time?: number;
+    detailed_analysis?: any;
   };
 }
 
@@ -34,31 +35,143 @@ export class MiniReportService {
     return gameNames[gameType] || gameType;
   }
 
+  private static analyzeGameEvents(events: any[], gameType: GameType): any {
+    if (!events || events.length === 0) {
+      return { summary: 'لا توجد بيانات كافية للتحليل' };
+    }
+
+    const analysis: any = {
+      totalEvents: events.length,
+      gameStartTime: events[0]?.timestamp || 0,
+      gameEndTime: events[events.length - 1]?.timestamp || 0,
+    };
+
+    if (gameType === 'memory') {
+      const cardFlips = events.filter(e => e.type === 'card_flip');
+      const matches = events.filter(e => e.type === 'match');
+      const correctMatches = matches.filter(e => e.value?.correct);
+      
+      analysis.cardFlips = cardFlips.length;
+      analysis.totalMatches = matches.length;
+      analysis.correctMatches = correctMatches.length;
+      analysis.matchAccuracy = matches.length > 0 ? (correctMatches.length / matches.length) * 100 : 0;
+      
+      // تحليل أوقات الاستجابة
+      const responseTimes = cardFlips
+        .map(e => e.value?.responseTime)
+        .filter(t => t && t > 0 && t < 10000);
+      
+      if (responseTimes.length > 0) {
+        analysis.avgResponseTime = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
+        analysis.minResponseTime = Math.min(...responseTimes);
+        analysis.maxResponseTime = Math.max(...responseTimes);
+      }
+    }
+
+    if (gameType === 'attention') {
+      const clicks = events.filter(e => e.type === 'click');
+      const correctClicks = clicks.filter(e => e.value?.correct);
+      const falsePositives = clicks.filter(e => e.value?.isTarget === false);
+      const missedTargets = events.filter(e => e.type === 'missed_target');
+      
+      analysis.totalClicks = clicks.length;
+      analysis.correctClicks = correctClicks.length;
+      analysis.falsePositives = falsePositives.length;
+      analysis.missedTargets = missedTargets.length;
+      analysis.clickAccuracy = clicks.length > 0 ? (correctClicks.length / clicks.length) * 100 : 0;
+      
+      // تحليل أوقات رد الفعل
+      const responseTimes = clicks
+        .map(e => e.value?.responseTime)
+        .filter(t => t && t > 0 && t < 5000);
+      
+      if (responseTimes.length > 0) {
+        analysis.avgReactionTime = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
+        analysis.fastestReaction = Math.min(...responseTimes);
+        analysis.slowestReaction = Math.max(...responseTimes);
+      }
+    }
+
+    return analysis;
+  }
+
   private static buildMiniReportPrompt(
     gameType: GameType,
     sessionData: GameSession,
-    childAge: number
+    childAge: number,
+    eventAnalysis?: any
   ): string {
     const gameName = this.getGameNameArabic(gameType);
-    const metrics = {
-      reaction_time: sessionData.average_response_time || 0,
-      accuracy: sessionData.accuracy_percentage || 0,
-      attempts: sessionData.total_moves || 0,
-      hesitation_count: sessionData.hesitation_count || 0,
-      completion_time: sessionData.duration_seconds || 0
+    
+    // استخدام البيانات الحقيقية من اللعبة
+    const rawData = sessionData.raw_data || {};
+    const realMetrics = {
+      score: sessionData.score || 0,
+      duration: sessionData.duration_seconds || 0,
+      accuracy: sessionData.accuracy_percentage || rawData.accuracy || 0,
+      avgResponseTime: sessionData.average_response_time || rawData.averageResponseTime || 0,
+      totalMoves: sessionData.total_moves || rawData.totalAttempts || 0,
+      hesitations: sessionData.hesitation_count || rawData.hesitations || 0,
+      rawGameData: rawData
     };
+
+    let gameSpecificData = '';
+    
+    if (gameType === 'memory') {
+      gameSpecificData = `
+**بيانات لعبة الذاكرة:**
+- الأزواج الصحيحة: ${rawData.correctPairs || 0}
+- إجمالي المحاولات: ${rawData.totalAttempts || 0}
+- الأخطاء: ${rawData.mistakes || 0}
+- نقرات البطاقات: ${rawData.cardFlips || 0}
+- دقة المطابقة: ${rawData.matchingAccuracy || 0}%`;
+    }
+    
+    if (gameType === 'attention') {
+      gameSpecificData = `
+**بيانات لعبة التركيز:**
+- النقرات الصحيحة: ${rawData.correct || 0}
+- النقرات الخاطئة: ${rawData.incorrect || 0}
+- الأهداف المفقودة: ${rawData.missed || 0}
+- الإيجابيات الخاطئة: ${rawData.falsePositives || 0}`;
+    }
+
+    if (eventAnalysis && eventAnalysis.totalEvents > 0) {
+      gameSpecificData += `
+
+**تحليل الأحداث:**
+- إجمالي الأحداث: ${eventAnalysis.totalEvents}
+- مدة اللعب الفعلية: ${Math.round((eventAnalysis.gameEndTime - eventAnalysis.gameStartTime) / 1000)} ثانية`;
+      
+      if (eventAnalysis.avgResponseTime) {
+        gameSpecificData += `
+- متوسط وقت الاستجابة: ${Math.round(eventAnalysis.avgResponseTime)} مللي ثانية`;
+      }
+      
+      if (eventAnalysis.matchAccuracy !== undefined) {
+        gameSpecificData += `
+- دقة المطابقة: ${Math.round(eventAnalysis.matchAccuracy)}%`;
+      }
+      
+      if (eventAnalysis.clickAccuracy !== undefined) {
+        gameSpecificData += `
+- دقة النقرات: ${Math.round(eventAnalysis.clickAccuracy)}%`;
+      }
+    }
 
     return `أنت خبير نفسي متخصص في تقييم النمو المعرفي للأطفال.
 
 قم بتحليل أداء طفل عمره ${childAge} سنة في ${gameName}.
 
 البيانات:
-- وقت رد الفعل: ${metrics.reaction_time.toFixed(2)} ثانية
-- نسبة الدقة: ${metrics.accuracy.toFixed(1)}%
-- إجمالي المحاولات: ${metrics.attempts}
-- عدد مرات التردد: ${metrics.hesitation_count}
-- وقت الإكمال: ${metrics.completion_time} ثانية
+- الدرجة النهائية: ${realMetrics.score}/100
+- مدة اللعب: ${realMetrics.duration} ثانية
+- نسبة الدقة: ${realMetrics.accuracy}%
+- متوسط وقت الاستجابة: ${realMetrics.avgResponseTime} مللي ثانية
+- إجمالي الحركات: ${realMetrics.totalMoves}
+- عدد مرات التردد: ${realMetrics.hesitations}
 
+${gameSpecificData}
 قم بإرجاع تقرير صغير بتنسيق Markdown يحتوي على:
 
 1. **الدرجة** (0-100): درجة رقمية تعكس الأداء الكلي
@@ -86,14 +199,19 @@ export class MiniReportService {
     childAge: number
   ): Promise<MiniReportData | null> {
     try {
-      const prompt = this.buildMiniReportPrompt(gameType, sessionData, childAge);
+      // تحليل الأحداث من البيانات الخام
+      const rawData = sessionData.raw_data || {};
+      const events = rawData.events || [];
+      const eventAnalysis = this.analyzeGameEvents(events, gameType);
+      
+      const prompt = this.buildMiniReportPrompt(gameType, sessionData, childAge, eventAnalysis);
 
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
-            content: 'أنت خبير في تقييم النمو المعرفي للأطفال. تقدم تحليلات دقيقة ومشجعة بتنسيق Markdown.'
+            content: 'أنت خبير في تقييم النمو المعرفي للأطفال. تقدم تحليلات دقيقة ومشجعة بتنسيق Markdown بناءً على البيانات الحقيقية فقط.'
           },
           {
             role: 'user',
@@ -101,7 +219,7 @@ export class MiniReportService {
           }
         ],
         temperature: 0.7,
-        max_tokens: 500
+        max_tokens: 600
       });
 
       const markdownContent = completion.choices[0]?.message?.content || '';
@@ -111,16 +229,17 @@ export class MiniReportService {
       const feedbackMatch = markdownContent.match(/\*\*الملاحظات:\*\*\s*(.+?)(?=\n|$)/);
       const tipMatch = markdownContent.match(/\*\*نصيحة:\*\*\s*(.+?)(?=\n|$)/);
 
-      const score = scoreMatch ? parseInt(scoreMatch[1], 10) : 50;
+      const score = scoreMatch ? parseInt(scoreMatch[1], 10) : sessionData.score || 50;
       const feedback = feedbackMatch ? feedbackMatch[1].trim() : 'أداء جيد';
       const improvement_tip = tipMatch ? tipMatch[1].trim() : 'استمر في الممارسة';
 
       const metrics = {
-        reaction_time: sessionData.average_response_time || 0,
-        accuracy: sessionData.accuracy_percentage || 0,
-        attempts: sessionData.total_moves || 0,
-        hesitation_count: sessionData.hesitation_count || 0,
-        completion_time: sessionData.duration_seconds || 0
+        reaction_time: sessionData.average_response_time || rawData.averageResponseTime || 0,
+        accuracy: sessionData.accuracy_percentage || rawData.accuracy || 0,
+        attempts: sessionData.total_moves || rawData.totalAttempts || 0,
+        hesitation_count: sessionData.hesitation_count || rawData.hesitations || 0,
+        completion_time: sessionData.duration_seconds || 0,
+        detailed_analysis: eventAnalysis
       };
 
       return {
