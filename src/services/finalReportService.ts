@@ -1,59 +1,75 @@
 import OpenAI from 'openai';
-import { supabase } from '../lib/supabase';
+import { storageService, type MiniReport, type FinalReport } from './storageService';
 
 const openai = new OpenAI({
   apiKey: import.meta.env.VITE_OPENAI_API_KEY,
   dangerouslyAllowBrowser: true
 });
 
-interface FinalReportResult {
-  markdown_content: string;
-  overall_score: number;
-  ai_insights: string;
-  recommendations: string[];
-}
-
 export class FinalReportService {
-  static async generateFinalReport(
-    assessmentPathId: string,
-    childId: string,
-    miniReports: any[],
-    childAge: number,
-    childName: string
-  ): Promise<FinalReportResult | null> {
+  static async generateAndSaveFinalReport(miniReportsCount: number = 6): Promise<string> {
     try {
-      if (miniReports.length === 0) {
-        console.error('لا توجد تقارير صغيرة');
-        return null;
+      console.log('📊 بدء إنشاء التقرير الشامل');
+
+      const recentReports = storageService.getRecentMiniReports(miniReportsCount);
+
+      if (recentReports.length === 0) {
+        throw new Error('لا توجد تقارير مصغرة لإنشاء التقرير الشامل');
       }
 
-      const reportsData = miniReports.map(r => ({
-        game: r.game_type,
-        score: r.score,
-        feedback: r.feedback
-      }));
+      console.log(`📝 عدد التقارير المصغرة: ${recentReports.length}`);
 
-      const prompt = `أنت خبير نفسي متخصص في تقييم الأطفال.
+      const reportsText = recentReports
+        .map((report, index) => {
+          return `
+=== التقرير ${index + 1}: ${report.gameType} ===
+النتيجة: ${report.score}/100
+التحليل:
+${report.analysis}
+`;
+        })
+        .join('\n\n');
 
-الطفل: ${childName}
-العمر: ${childAge} سنة
+      const prompt = `أنت خبير نفسي متخصص في التقييم الشامل للأطفال.
 
-النتائج من ${miniReports.length} ألعاب:
-${JSON.stringify(reportsData, null, 2)}
+لديك ${recentReports.length} تقارير مصغرة من ألعاب مختلفة للطفل:
 
-أرجع JSON فقط بهذا الشكل:
-{
-  "overall_score": رقم من 0-100 (متوسط الدرجات),
-  "ai_insights": "تحليل شامل 2-3 جمل",
-  "recommendations": ["نصيحة 1", "نصيحة 2", "نصيحة 3"]
-}`;
+${reportsText}
+
+قم بإنشاء تقرير تقييم شامل يتضمن:
+
+## 📊 النظرة العامة
+- ملخص الأداء الكلي (3-4 جمل)
+- النتيجة الإجمالية من 100
+
+## 🌟 نقاط القوة الرئيسية
+- حدد 3-4 نقاط قوة بارزة عبر جميع الألعاب
+
+## 🎯 المهارات المعرفية
+قيّم كل مهارة (ممتاز/جيد/يحتاج تطوير):
+- الذاكرة
+- التركيز
+- المنطق
+- الإدراك البصري
+- التعرف على الأنماط
+- الإبداع
+
+## 💡 التوصيات الشاملة
+قدم 4-5 توصيات عملية لتطوير الطفل
+
+## 🔍 الملاحظات السلوكية
+- الأنماط السلوكية الملحوظة عبر الألعاب
+- مستوى الصبر والمثابرة
+- القدرة على التكيف
+
+استخدم أسلوب احترافي ومشجع. اجعل التقرير شاملاً ومفيداً للآباء والمختصين.`;
 
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
-            content: 'أنت خبير تقييم شامل للأطفال. أرجع JSON فقط.'
+            content: 'أنت خبير نفسي متخصص في التقييم الشامل للأطفال. قدم تحليلات شاملة ودقيقة باللغة العربية.'
           },
           {
             role: 'user',
@@ -61,114 +77,33 @@ ${JSON.stringify(reportsData, null, 2)}
           }
         ],
         temperature: 0.7,
-        max_tokens: 500,
-        response_format: { type: 'json_object' }
+        max_tokens: 1500
       });
 
-      const responseText = completion.choices[0]?.message?.content || '{}';
-      console.log('GPT Final Report Response:', responseText);
-      const result = JSON.parse(responseText);
+      const analysis = completion.choices[0]?.message?.content || 'لم يتم إنشاء التقرير';
 
-      const markdown = `# 📊 التقرير الشامل
+      console.log('✅ تم إنشاء التقرير الشامل من GPT');
+      console.log('📝 التقرير:', analysis.substring(0, 150) + '...');
 
-## الطفل: ${childName} (${childAge} سنة)
-
-### 🎯 النتيجة الإجمالية
-**${result.overall_score}/100**
-
-### 💡 تحليل الذكاء الاصطناعي
-${result.ai_insights}
-
-### 🌟 التوصيات
-${(result.recommendations || []).map((r: string, i: number) => `${i + 1}. ${r}`).join('\n')}
-
----
-
-### 📈 نتائج الألعاب الفردية
-
-${miniReports.map(r => `**${r.game_type}:** ${r.score}/100 - ${r.feedback}`).join('\n\n')}`;
-
-      return {
-        markdown_content: markdown,
-        overall_score: result.overall_score || 50,
-        ai_insights: result.ai_insights || 'لا توجد رؤى متاحة',
-        recommendations: result.recommendations || []
+      const finalReport: FinalReport = {
+        id: `final_${Date.now()}`,
+        analysis: analysis,
+        miniReportsIds: recentReports.map(r => r.id),
+        timestamp: new Date().toISOString()
       };
 
+      storageService.saveFinalReport(finalReport);
+      console.log('💾 تم حفظ التقرير الشامل');
+
+      return analysis;
+
     } catch (error) {
-      console.error('خطأ في توليد التقرير الشامل:', error);
+      console.error('❌ خطأ في توليد التقرير الشامل:', error);
       throw error;
     }
   }
 
-  static async saveFinalReport(
-    assessmentPathId: string,
-    childId: string,
-    reportData: FinalReportResult
-  ): Promise<string | null> {
-    try {
-      const { data, error } = await supabase
-        .from('final_reports')
-        .insert({
-          assessment_path_id: assessmentPathId,
-          child_id: childId,
-          markdown_content: reportData.markdown_content,
-          skill_summary: {},
-          overall_trend: 'stable',
-          ai_insights: reportData.ai_insights,
-          recommendations: reportData.recommendations
-        })
-        .select('id')
-        .single();
-
-      if (error) {
-        console.error('خطأ في حفظ التقرير الشامل:', error);
-        throw error;
-      }
-
-      console.log('تم حفظ التقرير الشامل بنجاح:', data.id);
-      return data.id;
-    } catch (error) {
-      console.error('خطأ في حفظ التقرير الشامل:', error);
-      throw error;
-    }
-  }
-
-  static async getFinalReportByPathId(assessmentPathId: string): Promise<any | null> {
-    try {
-      const { data, error } = await supabase
-        .from('final_reports')
-        .select('*')
-        .eq('assessment_path_id', assessmentPathId)
-        .single();
-
-      if (error) {
-        return null;
-      }
-
-      return data;
-    } catch (error) {
-      return null;
-    }
-  }
-
-  static async getFinalReportsByChildId(childId: string): Promise<any[]> {
-    try {
-      const { data, error } = await supabase
-        .from('final_reports')
-        .select('*')
-        .eq('child_id', childId)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('خطأ في جلب التقارير الشاملة:', error);
-        return [];
-      }
-
-      return data || [];
-    } catch (error) {
-      console.error('خطأ في جلب التقارير الشاملة:', error);
-      return [];
-    }
+  static getAllFinalReports(): FinalReport[] {
+    return storageService.getAllFinalReports();
   }
 }

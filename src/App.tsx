@@ -1,7 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from './contexts/AuthContext';
+import { useState } from 'react';
 import { LandingPage } from './components/Landing/LandingPage';
-import { AuthPage } from './components/Auth/AuthPage';
 import { MainHome } from './components/Home/MainHome';
 import { GameSequenceManager } from './components/Games/GameSequenceManager';
 import { ImprovedMemoryGame } from './components/Games/ImprovedMemoryGame';
@@ -10,144 +8,70 @@ import { LogicGame } from './components/Games/LogicGame';
 import { VisualGame } from './components/Games/VisualGame';
 import { PatternGame } from './components/Games/PatternGame';
 import { CreativeGame } from './components/Games/CreativeGame';
-import { GameReport } from './components/Games/GameReport';
 import { AssessmentPaths } from './components/Games/AssessmentPaths';
-import { AnalyzingScreen } from './components/Games/AnalyzingScreen';
+import { MiniReportAnimation } from './components/Analysis/MiniReportAnimation';
+import { FinalReportAnimation } from './components/Analysis/FinalReportAnimation';
 import { MiniReportScreen } from './components/Games/MiniReportScreen';
 import { ReportsPage } from './components/Reports/ReportsPage';
 import { ConsultationPage } from './components/Consultation/ConsultationPage';
-import { BehaviorPage } from './components/Behavior/BehaviorPage';
 import { StorePage } from './components/Store/StorePage';
 import { AIAssistantPage } from './components/AIAssistant/AIAssistantPage';
-import { supabase } from './lib/supabase';
-import { generateMiniReport, generateComprehensiveReport } from './services/openaiService';
-import { assessmentPathManager } from './services/assessmentPathService';
+import { storageService, type GameData } from './services/storageService';
 import { MiniReportService } from './services/miniReportService';
 import { FinalReportService } from './services/finalReportService';
-import { BehaviorTrackingService } from './services/behaviorTrackingService';
-import { MiniReportAnimation } from './components/Analysis/MiniReportAnimation';
-import { FinalReportAnimation } from './components/Analysis/FinalReportAnimation';
-import { GameType, Child, AssessmentPath, GameReport as GameReportType } from './types';
-import { Loader2 } from 'lucide-react';
+import type { GameType } from './types';
 
 type Screen =
   | 'landing'
-  | 'auth'
   | 'home'
   | 'assessment-paths'
   | 'game-sequence'
   | 'game'
   | 'analyzing'
   | 'mini-report'
-  | 'game-report'
   | 'final-report-loading'
-  | 'final-report'
   | 'reports'
   | 'consultation'
-  | 'behavior'
   | 'store'
   | 'ai-assistant';
 
 const ALL_GAMES: GameType[] = ['memory', 'attention', 'logic', 'visual', 'pattern', 'creative'];
 
 function App() {
-  const { user, loading: authLoading } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
   const [selectedGame, setSelectedGame] = useState<GameType | null>(null);
-  const [child, setChild] = useState<Child | null>(null);
-  const [currentPath, setCurrentPath] = useState<AssessmentPath | null>(null);
-  const [currentReport, setCurrentReport] = useState<GameReportType | null>(null);
-  const [currentMiniReport, setCurrentMiniReport] = useState<any>(null);
   const [currentGameName, setCurrentGameName] = useState('');
-
-  useEffect(() => {
-    if (user) {
-      loadOrCreateChild();
-      setCurrentScreen('home');
-    } else {
-      setCurrentScreen('landing');
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (currentScreen === 'analyzing') {
-      const timer = setTimeout(() => {
-        setCurrentScreen('mini-report');
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [currentScreen]);
-
-  const loadOrCreateChild = async () => {
-    if (!user) return;
-
-    try {
-      const { data: existingChildren, error: fetchError } = await supabase
-        .from('children')
-        .select('*')
-        .eq('user_id', user.id)
-        .limit(1);
-
-      if (fetchError) throw fetchError;
-
-      if (existingChildren && existingChildren.length > 0) {
-        setChild(existingChildren[0]);
-      } else {
-        const { data: newChild, error: createError } = await supabase
-          .from('children')
-          .insert({
-            user_id: user.id,
-            name: 'بطلنا',
-            birth_date: new Date(Date.now() - 7 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          })
-          .select()
-          .single();
-
-        if (createError) throw createError;
-        setChild(newChild);
-      }
-    } catch (error) {
-      console.error('Error loading/creating child:', error);
-    }
-  };
+  const [completedGames, setCompletedGames] = useState<Set<GameType>>(new Set());
+  const [currentMiniReport, setCurrentMiniReport] = useState<string | null>(null);
+  const [currentGameScore, setCurrentGameScore] = useState<number>(0);
+  const [pathType, setPathType] = useState<'single' | 'all'>('single');
 
   const handleGetStarted = () => {
-    setCurrentScreen('auth');
+    setCurrentScreen('home');
   };
 
   const handleNavigate = (section: string) => {
     if (section === 'assessment') {
-      setCurrentPath(null);
       setCurrentScreen('assessment-paths');
     } else {
       setCurrentScreen(section as Screen);
     }
   };
 
-  const handleSelectAssessmentPath = async (path: 'single' | 'all' | 'view-reports') => {
-    if (!child) return;
-
+  const handleSelectAssessmentPath = (path: 'single' | 'all' | 'view-reports') => {
     if (path === 'view-reports') {
       setCurrentScreen('reports');
       return;
     }
 
-    try {
-      const targetGames = path === 'all' ? ALL_GAMES : [];
-      const newPath = await assessmentPathManager.createPath(child.id, path, targetGames);
-      setCurrentPath(newPath);
-      setCurrentScreen('game-sequence');
-    } catch (error) {
-      console.error('Error creating assessment path:', error);
-    }
+    setPathType(path);
+    setCompletedGames(new Set());
+    setCurrentScreen('game-sequence');
   };
 
-  const handleGameSelect = async (gameType: GameType) => {
-    if (!child || !currentPath) return;
-
-    const isCompleted = await assessmentPathManager.isGameCompletedInPath(currentPath.id, gameType);
-    if (isCompleted) {
-      console.log('Game already completed in this path');
+  const handleGameSelect = (gameType: GameType) => {
+    if (completedGames.has(gameType)) {
+      console.log('اللعبة مكتملة بالفعل');
       return;
     }
 
@@ -162,143 +86,62 @@ function App() {
     };
     setCurrentGameName(gameNames[gameType]);
     setCurrentScreen('game');
-
-    if (child && user) {
-      try {
-        const { data: childProfile } = await supabase
-          .from('children_profiles')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (childProfile) {
-          await BehaviorTrackingService.logGameStart(childProfile.id, '', gameType);
-        }
-      } catch (error) {
-        console.error('Error logging game start:', error);
-      }
-    }
   };
 
   const handleGameComplete = async (gameData: any) => {
-    if (!child || !selectedGame || !currentPath) return;
+    if (!selectedGame) return;
 
     setCurrentScreen('analyzing');
+    setCurrentGameScore(gameData.score || 50);
 
     try {
-      const startTime = Date.now();
+      console.log('🎮 جمع بيانات اللعبة:', gameData);
 
-      const { data: childProfile } = await supabase
-        .from('children_profiles')
-        .select('*')
-        .eq('user_id', user?.id)
-        .maybeSingle();
-
-      const childAge = childProfile
-        ? Math.floor((Date.now() - new Date(childProfile.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000))
-        : Math.floor((Date.now() - new Date(child.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000));
-
-      const { data: session, error: sessionError } = await supabase
-        .from('game_sessions')
-        .insert({
-          child_id: child.id,
-          game_type: selectedGame,
-          assessment_path_id: currentPath.id,
-          score: gameData.score || 0,
-          duration_seconds: gameData.duration || 0,
-          raw_data: gameData.rawData || {},
-          completed: true,
-          hesitation_count: 0,
-          pause_count: 0,
-          started_at: new Date(startTime).toISOString(),
-          average_response_time: 0,
-          accuracy_percentage: gameData.score || 0,
-          total_moves: 0,
-        })
-        .select()
-        .single();
-
-      if (sessionError) {
-        console.error('خطأ في حفظ الجلسة:', sessionError);
-        throw sessionError;
-      }
-
-      console.log('تم حفظ جلسة اللعبة:', session.id);
-
-      let miniReportData = null;
-      if (childProfile) {
-        try {
-          console.log('جاري إنشاء التقرير الصغير...');
-          miniReportData = await MiniReportService.generateMiniReport(
-            session.id,
-            childProfile.id,
-            selectedGame,
-            session,
-            childAge
-          );
-
-          if (miniReportData) {
-            console.log('جاري حفظ التقرير الصغير...');
-            await MiniReportService.saveMiniReport(
-              session.id,
-              childProfile.id,
-              selectedGame,
-              miniReportData
-            );
-            console.log('تم حفظ التقرير الصغير بنجاح');
-          }
-        } catch (error) {
-          console.error('خطأ في التقرير الصغير:', error);
-        }
-      }
-
-      await assessmentPathManager.addGameToPath(currentPath.id, selectedGame, session.id);
-      await assessmentPathManager.updatePathScore(currentPath.id, {
-        score: gameData.score || 0,
+      const gameDataToSave: GameData = {
+        id: `game_${Date.now()}`,
+        gameType: selectedGame,
+        score: gameData.score || 50,
         duration: gameData.duration || 0,
-      });
+        clicks: gameData.clicks || 0,
+        correctAnswers: gameData.correctAnswers || 0,
+        wrongAnswers: gameData.wrongAnswers || 0,
+        totalAttempts: gameData.totalAttempts || 1,
+        timestamp: new Date().toISOString()
+      };
 
-      const updatedPath = await assessmentPathManager.getPathById(currentPath.id);
-      setCurrentPath(updatedPath);
+      storageService.saveGameData(gameDataToSave);
+      console.log('💾 تم حفظ بيانات اللعبة');
 
-      setCurrentMiniReport({
-        game: selectedGame,
-        score: miniReportData?.score || gameData.score || 50,
-        status: miniReportData?.score >= 80 ? 'ممتاز' : miniReportData?.score >= 60 ? 'جيد' : 'يحتاج تحسين',
-        reasons: miniReportData ? [miniReportData.feedback] : ['أداء جيد'],
-        tip: miniReportData?.improvement_tip || 'استمر في الممارسة',
-        markdownContent: miniReportData?.markdown_content || '',
-        gptAnalysis: null
-      });
+      console.log('🤖 إرسال البيانات إلى GPT للتحليل...');
+      const analysis = await MiniReportService.generateAndSaveMiniReport(gameDataToSave);
+
+      setCurrentMiniReport(analysis);
+      setCompletedGames(prev => new Set([...prev, selectedGame]));
+
+      setTimeout(() => {
+        setCurrentScreen('mini-report');
+      }, 3000);
+
     } catch (error) {
-      console.error('خطأ في معالجة إكمال اللعبة:', error);
-      alert('حدث خطأ في حفظ النتيجة. يرجى المحاولة مرة أخرى.');
+      console.error('❌ خطأ في معالجة إكمال اللعبة:', error);
+      alert('حدث خطأ في التحليل. يرجى المحاولة مرة أخرى.');
       setCurrentScreen('game-sequence');
     }
   };
 
-  const handleAnalyzingComplete = () => {
-    setCurrentScreen('mini-report');
-  };
-
   const handleMiniReportNext = async () => {
-    if (!currentPath) return;
-
-    const progress = await assessmentPathManager.getPathProgress(currentPath.id);
-
-    if (progress.completed < progress.total) {
+    if (pathType === 'all' && completedGames.size < ALL_GAMES.length) {
       setSelectedGame(null);
       setCurrentMiniReport(null);
       setCurrentScreen('game-sequence');
     } else {
-      handleGenerateFinalReport();
+      await handleGenerateFinalReport();
     }
   };
 
   const handleMiniReportHome = () => {
     setSelectedGame(null);
     setCurrentMiniReport(null);
-    setCurrentPath(null);
     setCurrentScreen('home');
   };
 
@@ -308,121 +151,25 @@ function App() {
   };
 
   const handleBackFromGame = () => {
-    if (child && selectedGame) {
-      supabase.from('behavior_logs').insert({
-        child_id: child.id,
-        event_type: 'game_quit',
-        game_type: selectedGame,
-      });
-    }
     setSelectedGame(null);
     setCurrentScreen('game-sequence');
   };
 
   const handleGenerateFinalReport = async () => {
-    if (!child || !currentPath || !user) return;
-
     setCurrentScreen('final-report-loading');
 
     try {
-      console.log('بدء إنشاء التقرير الشامل...');
+      console.log('📊 إنشاء التقرير الشامل...');
+      await FinalReportService.generateAndSaveFinalReport(completedGames.size);
+      console.log('✅ تم إنشاء التقرير الشامل بنجاح');
 
-      const { data: childProfile } = await supabase
-        .from('children_profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      setTimeout(() => {
+        setCurrentScreen('reports');
+      }, 3000);
 
-      const childAge = childProfile
-        ? Math.floor((Date.now() - new Date(childProfile.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000))
-        : Math.floor((Date.now() - new Date(child.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000));
-
-      const childName = childProfile?.child_name || child.name;
-
-      if (childProfile) {
-        const miniReports = await MiniReportService.getMiniReportsByPathId(currentPath.id);
-        console.log('عدد التقارير الصغيرة:', miniReports.length);
-
-        if (miniReports.length > 0) {
-          try {
-            console.log('جاري إنشاء التقرير الشامل...');
-            const finalReportData = await FinalReportService.generateFinalReport(
-              currentPath.id,
-              childProfile.id,
-              miniReports,
-              childAge,
-              childName
-            );
-
-            if (finalReportData) {
-              console.log('جاري حفظ التقرير الشامل...');
-              await FinalReportService.saveFinalReport(
-                currentPath.id,
-                childProfile.id,
-                finalReportData
-              );
-              console.log('تم حفظ التقرير الشامل بنجاح');
-            }
-          } catch (error) {
-            console.error('خطأ في التقرير الشامل:', error);
-            alert('حدث خطأ في إنشاء التقرير الشامل');
-          }
-        } else {
-          console.warn('لا توجد تقارير صغيرة لإنشاء التقرير الشامل');
-        }
-      }
-
-      const { data: sessions, error: sessionsError } = await supabase
-        .from('game_sessions')
-        .select('*')
-        .in('id', currentPath.session_ids);
-
-      if (sessionsError) throw sessionsError;
-
-      const { data: allReports, error: reportsError } = await supabase
-        .from('game_reports')
-        .select('*')
-        .in('session_id', currentPath.session_ids)
-        .order('created_at', { ascending: false });
-
-      if (reportsError) throw reportsError;
-
-      const miniReportsData = allReports.map((report, index) => ({
-        game_type: sessions[index]?.game_type as GameType,
-        performance_score: report.performance_score,
-        performance_level: report.level,
-        analysis_text: report.analysis,
-        observations: Array.isArray(report.reasons) ? report.reasons : [],
-      }));
-
-      const comprehensiveAnalysis = await generateComprehensiveReport(
-        miniReportsData,
-        childProfile.child_name,
-        childAge
-      );
-
-      const { data: finalReport, error: reportError } = await supabase
-        .from('comprehensive_reports')
-        .insert({
-          child_id: child.id,
-          assessment_path_id: currentPath.id,
-          overall_score: comprehensiveAnalysis.overallScore,
-          cognitive_map: comprehensiveAnalysis.domainScores,
-          detailed_analysis: comprehensiveAnalysis.aiSummary,
-          recommendations: comprehensiveAnalysis.recommendations,
-          specialist_alert: comprehensiveAnalysis.specialistAlert ? comprehensiveAnalysis.specialistAlertReason || '' : '',
-          encouragement: comprehensiveAnalysis.aiSummary,
-        })
-        .select()
-        .single();
-
-      if (reportError) throw reportError;
-
-      await assessmentPathManager.linkComprehensiveReport(currentPath.id, finalReport.id);
-
-      setCurrentScreen('reports');
     } catch (error) {
-      console.error('Error generating final report:', error);
+      console.error('❌ خطأ في إنشاء التقرير الشامل:', error);
+      alert('حدث خطأ في إنشاء التقرير الشامل');
       setCurrentScreen('game-sequence');
     }
   };
@@ -452,39 +199,17 @@ function App() {
     }
   };
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--gray-100)' }}>
-        <Loader2 className="w-12 h-12 animate-spin" style={{ color: 'var(--primary-purple)' }} />
-      </div>
-    );
-  }
-
   if (currentScreen === 'landing') {
     return <LandingPage onGetStarted={handleGetStarted} />;
   }
 
-  if (!user || currentScreen === 'auth') {
-    return <AuthPage />;
-  }
-
-  if (!child) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--gray-100)' }}>
-        <Loader2 className="w-12 h-12 animate-spin" style={{ color: 'var(--primary-purple)' }} />
-      </div>
-    );
-  }
-
   if (currentScreen === 'final-report-loading') {
-    return (
-      <FinalReportAnimation gamesCompleted={currentPath?.completed_games?.length || 6} />
-    );
+    return <FinalReportAnimation gamesCompleted={completedGames.size} />;
   }
 
   switch (currentScreen) {
     case 'home':
-      return <MainHome childName={child.name} onNavigate={handleNavigate} />;
+      return <MainHome childName="بطلنا" onNavigate={handleNavigate} />;
 
     case 'assessment-paths':
       return (
@@ -497,14 +222,21 @@ function App() {
     case 'game-sequence':
       return (
         <GameSequenceManager
-          childId={child.id}
-          currentPath={currentPath}
+          childId="local"
+          currentPath={{
+            id: 'local-path',
+            child_id: 'local',
+            path_type: pathType,
+            completed_games: Array.from(completedGames),
+            target_games: pathType === 'all' ? ALL_GAMES : [],
+            session_ids: [],
+            created_at: new Date().toISOString(),
+            status: 'in_progress',
+            overall_score: 0
+          }}
           onSelectGame={handleGameSelect}
           onBack={() => {
-            if (currentPath) {
-              assessmentPathManager.abandonPath(currentPath.id);
-            }
-            setCurrentPath(null);
+            setCompletedGames(new Set());
             setCurrentScreen('assessment-paths');
           }}
           onGenerateFinalReport={handleGenerateFinalReport}
@@ -521,39 +253,24 @@ function App() {
       if (!currentMiniReport) return null;
       return (
         <MiniReportScreen
-          score={currentMiniReport.score}
-          status={currentMiniReport.status}
-          reasons={currentMiniReport.reasons}
-          tip={currentMiniReport.tip}
+          score={currentGameScore}
+          status={currentGameScore >= 80 ? 'ممتاز' : currentGameScore >= 60 ? 'جيد' : 'يحتاج تحسين'}
+          reasons={[currentMiniReport]}
+          tip="استمر في الممارسة"
           gameName={currentGameName}
-          onNext={currentPath?.path_type === 'all' ? handleMiniReportNext : undefined}
+          onNext={pathType === 'all' ? handleMiniReportNext : undefined}
           onHome={handleMiniReportHome}
           onReplay={handleMiniReportReplay}
-          showNext={currentPath?.path_type === 'all'}
-          markdownContent={currentMiniReport.markdownContent}
-          gptAnalysis={currentMiniReport.gptAnalysis}
-        />
-      );
-
-    case 'game-report':
-      return (
-        <GameReport
-          report={currentReport}
-          loading={false}
-          onNextGame={() => setCurrentScreen('game-sequence')}
-          onHome={() => setCurrentScreen('home')}
-          onConsult={() => setCurrentScreen('consultation')}
+          showNext={pathType === 'all'}
+          markdownContent={currentMiniReport}
         />
       );
 
     case 'reports':
-      return <ReportsPage childId={child.id} onBack={() => setCurrentScreen('home')} />;
+      return <ReportsPage onBack={() => setCurrentScreen('home')} />;
 
     case 'consultation':
       return <ConsultationPage onBack={() => setCurrentScreen('home')} />;
-
-    case 'behavior':
-      return <BehaviorPage childId={child.id} onBack={() => setCurrentScreen('home')} />;
 
     case 'store':
       return <StorePage onBack={() => setCurrentScreen('home')} />;
@@ -562,7 +279,7 @@ function App() {
       return <AIAssistantPage onBack={() => setCurrentScreen('home')} />;
 
     default:
-      return <MainHome childName={child.name} onNavigate={handleNavigate} />;
+      return <MainHome childName="بطلنا" onNavigate={handleNavigate} />;
   }
 }
 

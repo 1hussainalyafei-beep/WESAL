@@ -1,59 +1,34 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, FileText } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
-import { MarkdownRenderer } from '../Common/MarkdownRenderer';
 import { MiniReportService } from '../../services/miniReportService';
 import { FinalReportService } from '../../services/finalReportService';
+import type { MiniReport, FinalReport } from '../../services/storageService';
 
 interface ReportsPageProps {
-  childId: string;
   onBack: () => void;
 }
 
-export function ReportsPage({ childId, onBack }: ReportsPageProps) {
-  const [miniReports, setMiniReports] = useState<any[]>([]);
-  const [finalReports, setFinalReports] = useState<any[]>([]);
-  const [selectedReport, setSelectedReport] = useState<any | null>(null);
+export function ReportsPage({ onBack }: ReportsPageProps) {
+  const [miniReports, setMiniReports] = useState<MiniReport[]>([]);
+  const [finalReports, setFinalReports] = useState<FinalReport[]>([]);
+  const [selectedReport, setSelectedReport] = useState<MiniReport | FinalReport | null>(null);
   const [reportType, setReportType] = useState<'mini' | 'final'>('mini');
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadReports();
-  }, [childId]);
+  }, []);
 
-  const loadReports = async () => {
-    try {
-      const { data: childProfile } = await supabase
-        .from('children_profiles')
-        .select('id')
-        .eq('child_id', childId)
-        .maybeSingle();
+  const loadReports = () => {
+    const mini = MiniReportService.getAllMiniReports();
+    const final = FinalReportService.getAllFinalReports();
 
-      if (childProfile) {
-        const mini = await MiniReportService.getMiniReportsByChildId(childProfile.id);
-        const final = await FinalReportService.getFinalReportsByChildId(childProfile.id);
-
-        setMiniReports(mini);
-        setFinalReports(final);
-      }
-    } catch (error) {
-      console.error('خطأ في تحميل التقارير:', error);
-    } finally {
-      setLoading(false);
-    }
+    setMiniReports(mini.reverse());
+    setFinalReports(final.reverse());
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen p-6 flex items-center justify-center" style={{ backgroundColor: '#F5F5F5' }}>
-        <div className="text-center">
-          <div className="text-2xl font-bold" style={{ color: '#5B4B9D' }}>
-            جارٍ التحميل...
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const isMiniReport = (report: MiniReport | FinalReport): report is MiniReport => {
+    return 'gameType' in report;
+  };
 
   if (selectedReport) {
     return (
@@ -71,19 +46,36 @@ export function ReportsPage({ childId, onBack }: ReportsPageProps) {
           <div className="rounded-2xl p-8 shadow-lg" style={{ backgroundColor: 'white' }}>
             <div className="mb-6">
               <h2 className="text-3xl font-bold mb-2" style={{ color: '#5B4B9D' }}>
-                {reportType === 'mini' ? `تقرير لعبة ${selectedReport.game_type}` : 'التقرير الشامل'}
+                {isMiniReport(selectedReport) ? `تقرير لعبة ${selectedReport.gameType}` : 'التقرير الشامل'}
               </h2>
               <p className="text-gray-600">
-                {new Date(selectedReport.created_at).toLocaleDateString('ar-SA', {
+                {new Date(selectedReport.timestamp).toLocaleDateString('ar-SA', {
                   year: 'numeric',
                   month: 'long',
-                  day: 'numeric'
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
                 })}
               </p>
+              {isMiniReport(selectedReport) && (
+                <div className="mt-4 inline-block px-4 py-2 rounded-xl" style={{ backgroundColor: '#E3F2FD' }}>
+                  <span className="text-2xl font-bold" style={{ color: '#5B4B9D' }}>
+                    النتيجة: {selectedReport.score}/100
+                  </span>
+                </div>
+              )}
             </div>
 
-            <div className="prose prose-lg max-w-none">
-              <MarkdownRenderer content={selectedReport.markdown_content || 'لا يوجد محتوى متاح'} />
+            <div className="prose prose-lg max-w-none" style={{ direction: 'rtl', textAlign: 'right' }}>
+              <pre style={{
+                whiteSpace: 'pre-wrap',
+                fontFamily: 'inherit',
+                fontSize: 'inherit',
+                lineHeight: '1.8',
+                color: '#424242'
+              }}>
+                {selectedReport.analysis}
+              </pre>
             </div>
           </div>
         </div>
@@ -108,7 +100,7 @@ export function ReportsPage({ childId, onBack }: ReportsPageProps) {
             📊 التقارير
           </h1>
           <p className="text-gray-600">
-            عرض جميع تقارير التقييم المعرفي
+            عرض جميع تقارير التقييم المعرفي المحفوظة محلياً
           </p>
         </div>
 
@@ -140,15 +132,15 @@ export function ReportsPage({ childId, onBack }: ReportsPageProps) {
             {miniReports.length === 0 ? (
               <div className="rounded-2xl p-8 text-center" style={{ backgroundColor: 'white' }}>
                 <p className="text-gray-600">لا توجد تقارير ألعاب حتى الآن</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  العب الألعاب للحصول على تقارير تفصيلية
+                </p>
               </div>
             ) : (
               miniReports.map((report) => (
                 <div
                   key={report.id}
-                  onClick={() => {
-                    setSelectedReport(report);
-                    setReportType('mini');
-                  }}
+                  onClick={() => setSelectedReport(report)}
                   className="rounded-2xl p-6 shadow-lg cursor-pointer transition-all hover:scale-105"
                   style={{ backgroundColor: 'white' }}
                 >
@@ -157,12 +149,14 @@ export function ReportsPage({ childId, onBack }: ReportsPageProps) {
                       <div className="flex items-center gap-3 mb-2">
                         <FileText className="w-6 h-6" style={{ color: '#5B4B9D' }} />
                         <h3 className="text-xl font-bold" style={{ color: '#5B4B9D' }}>
-                          لعبة {report.game_type}
+                          لعبة {report.gameType}
                         </h3>
                       </div>
-                      <p className="text-gray-600 mb-2">{report.feedback}</p>
+                      <p className="text-gray-600 mb-2 line-clamp-2">
+                        {report.analysis.substring(0, 150)}...
+                      </p>
                       <p className="text-sm text-gray-500">
-                        {new Date(report.created_at).toLocaleDateString('ar-SA')}
+                        {new Date(report.timestamp).toLocaleDateString('ar-SA')}
                       </p>
                     </div>
                     <div
@@ -193,10 +187,7 @@ export function ReportsPage({ childId, onBack }: ReportsPageProps) {
               finalReports.map((report) => (
                 <div
                   key={report.id}
-                  onClick={() => {
-                    setSelectedReport(report);
-                    setReportType('final');
-                  }}
+                  onClick={() => setSelectedReport(report)}
                   className="rounded-2xl p-6 shadow-lg cursor-pointer transition-all hover:scale-105"
                   style={{ backgroundColor: 'white' }}
                 >
@@ -208,9 +199,11 @@ export function ReportsPage({ childId, onBack }: ReportsPageProps) {
                           تقرير شامل
                         </h3>
                       </div>
-                      <p className="text-gray-600 mb-2">{report.ai_insights}</p>
+                      <p className="text-gray-600 mb-2 line-clamp-2">
+                        {report.analysis.substring(0, 150)}...
+                      </p>
                       <p className="text-sm text-gray-500">
-                        {new Date(report.created_at).toLocaleDateString('ar-SA')}
+                        {new Date(report.timestamp).toLocaleDateString('ar-SA')} • {report.miniReportsIds.length} ألعاب
                       </p>
                     </div>
                   </div>
