@@ -90,9 +90,9 @@ export function StorePage({ onBack }: StorePageProps) {
             onClick={() => setShowCart(!showCart)}
             className="relative px-6 py-3 rounded-xl font-bold transition-all hover:scale-105"
             style={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: 'linear-gradient(135deg, #8D6E63 0%, #A1887F 100%)',
               color: 'white',
-              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+              boxShadow: '0 4px 12px rgba(141, 110, 99, 0.3)'
             }}
           >
             <ShoppingCart className="w-5 h-5 inline ml-2" />
@@ -138,9 +138,9 @@ export function StorePage({ onBack }: StorePageProps) {
                     onClick={() => setShowCheckout(true)}
                     className="w-full px-6 py-3 rounded-xl font-bold transition-all hover:scale-105"
                     style={{
-                      background: 'linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%)',
+                      background: 'linear-gradient(135deg, #6D4C41 0%, #8D6E63 100%)',
                       color: 'white',
-                      boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)'
+                      boxShadow: '0 4px 12px rgba(109, 76, 65, 0.3)'
                     }}
                   >
                     إتمام الشراء
@@ -220,9 +220,9 @@ export function StorePage({ onBack }: StorePageProps) {
                 }}
                 className="w-full px-4 py-3 rounded-xl font-bold transition-all hover:scale-105 flex items-center justify-center gap-2"
                 style={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background: 'linear-gradient(135deg, #8D6E63 0%, #A1887F 100%)',
                   color: 'white',
-                  boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+                  boxShadow: '0 4px 12px rgba(141, 110, 99, 0.3)'
                 }}
               >
                 <ShoppingCart className="w-4 h-4" />
