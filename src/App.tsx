@@ -164,14 +164,18 @@ function App() {
     setCurrentScreen('game');
 
     if (child && user) {
-      const { data: childProfile } = await supabase
-        .from('children_profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      try {
+        const { data: childProfile } = await supabase
+          .from('children_profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-      if (childProfile) {
-        await BehaviorTrackingService.logGameStart(childProfile.id, '', gameType);
+        if (childProfile) {
+          await BehaviorTrackingService.logGameStart(childProfile.id, '', gameType);
+        }
+      } catch (error) {
+        console.error('Error logging game start:', error);
       }
     }
   };
@@ -217,29 +221,36 @@ function App() {
       if (sessionError) throw sessionError;
 
       if (childProfile) {
-        await BehaviorTrackingService.logGameComplete(
-          childProfile.id,
-          session.id,
-          selectedGame,
-          gameData.duration
-        );
+        try {
+          await BehaviorTrackingService.logGameComplete(
+            childProfile.id,
+            session.id,
+            selectedGame,
+            gameData.duration
+          );
+        } catch (error) {
+          console.error('Error logging behavior:', error);
+        }
       }
 
-      const miniReportData = await MiniReportService.generateMiniReport(
-        session.id,
-        childProfile?.id || child.id,
-        selectedGame,
-        session,
-        childAge
-      );
-
-      if (miniReportData && childProfile) {
-        await MiniReportService.saveMiniReport(
+      let miniReportData = null;
+      if (childProfile) {
+        miniReportData = await MiniReportService.generateMiniReport(
           session.id,
           childProfile.id,
           selectedGame,
-          miniReportData
+          session,
+          childAge
         );
+
+        if (miniReportData) {
+          await MiniReportService.saveMiniReport(
+            session.id,
+            childProfile.id,
+            selectedGame,
+            miniReportData
+          );
+        }
       }
 
       const gptAnalysis = await generateMiniReport(session, childAge);
@@ -348,38 +359,30 @@ function App() {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (!childProfile) {
-        console.error('Child profile not found');
-        setCurrentScreen('game-sequence');
-        return;
-      }
+      const childAge = childProfile
+        ? Math.floor((Date.now() - new Date(childProfile.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000))
+        : Math.floor((Date.now() - new Date(child.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000));
 
-      const miniReports = await MiniReportService.getMiniReportsByPathId(currentPath.id);
+      if (childProfile) {
+        const miniReports = await MiniReportService.getMiniReportsByPathId(currentPath.id);
 
-      if (miniReports.length === 0) {
-        console.error('No mini reports found');
-        setCurrentScreen('game-sequence');
-        return;
-      }
+        if (miniReports.length > 0) {
+          const finalReportData = await FinalReportService.generateFinalReport(
+            currentPath.id,
+            childProfile.id,
+            miniReports,
+            childAge,
+            childProfile.child_name
+          );
 
-      const childAge = Math.floor(
-        (Date.now() - new Date(childProfile.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000)
-      );
-
-      const finalReportData = await FinalReportService.generateFinalReport(
-        currentPath.id,
-        childProfile.id,
-        miniReports,
-        childAge,
-        childProfile.child_name
-      );
-
-      if (finalReportData) {
-        await FinalReportService.saveFinalReport(
-          currentPath.id,
-          childProfile.id,
-          finalReportData
-        );
+          if (finalReportData) {
+            await FinalReportService.saveFinalReport(
+              currentPath.id,
+              childProfile.id,
+              finalReportData
+            );
+          }
+        }
       }
 
       const { data: sessions, error: sessionsError } = await supabase
