@@ -137,13 +137,7 @@ export function GameSequenceManager({
           onClick={onBack}
           className="mb-6 btn-secondary"
         >
-          <div className="flex items-center gap-2">
-            ← العودة للرئيسية
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center p-1"
-                 style={{ background: 'linear-gradient(135deg, #5B4B9D 0%, #7B68B0 50%, #9575CD 100%)' }}>
-              <img src="/w.png" alt="وصال" className="w-full h-full object-contain" />
-            </div>
-          </div>
+          ← العودة للرئيسية
         </button>
 
         <div className="card mb-6 text-center p-8">

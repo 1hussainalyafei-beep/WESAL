@@ -29,16 +29,12 @@ export function MainHome({ childName, onNavigate }: MainHomeProps) {
       title: 'استشارة طبيب',
       subtitle: 'تحدث مع متخصص',
       icon: Stethoscope,
-      bgColor: '#26A69A',
-      iconBg: '#4DB6AC',
     },
     {
       id: 'store',
       title: 'المتجر',
       subtitle: 'ألعاب وأدوات تعليمية',
       icon: ShoppingBag,
-      bgColor: '#FFA726',
-      iconBg: '#FFB74D',
     },
   ];
 
@@ -90,13 +86,9 @@ export function MainHome({ childName, onNavigate }: MainHomeProps) {
                 <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 
                 <div className="relative z-10">
-                  <div className="w-24 h-24 mx-auto mb-6 rounded-3xl flex items-center justify-center p-4"
-                       style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                    <img src="/w.png" alt="وصال" className="w-full h-full object-contain" />
-                  </div>
                   
                   <h3 className="text-4xl font-bold text-white mb-4">
-                    🎮 ابدأ الألعاب التفاعلية
+                    ابدأ التقييم والمساعدة الذكية
                   </h3>
                   
                   <p className="text-xl text-white/90 mb-6 leading-relaxed">
@@ -105,9 +97,6 @@ export function MainHome({ childName, onNavigate }: MainHomeProps) {
                   
                   <div className="flex items-center justify-center gap-3 text-lg font-semibold text-white">
                     <span>انطلق الآن</span>
-                    <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-2 transition-transform duration-300">
-                      <span className="text-2xl">🚀</span>
-                    </div>
                   </div>
                 </div>
               </button>
@@ -125,13 +114,15 @@ export function MainHome({ childName, onNavigate }: MainHomeProps) {
                     onClick={() => onNavigate(item.id)}
                     className="rounded-2xl p-6 text-right hover:scale-105 transition-all duration-200 hover:shadow-xl"
                     style={{
-                      backgroundColor: item.bgColor,
+                      background: item.id === 'store' 
+                        ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                        : 'linear-gradient(135deg, #26A69A 0%, #4DB6AC 100%)',
                       boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                     }}
                   >
                     <div className="flex items-center justify-center mb-4">
                       <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                           style={{ backgroundColor: item.iconBg }}>
+                           style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
                         <item.icon className="w-8 h-8 text-white" strokeWidth={2.5} />
                       </div>
                     </div>
