@@ -167,16 +167,7 @@ ${sessionsText}
 - الهدف من النشاط
 
 ## 8. خطة أسبوعية (Weekly Plan)
-7 أنشطة متنوعة (واحد لكل يوم):
-```json
-{
-  "day": 1,
-  "dayName": "الأحد",
-  "activity": "نشاط محدد",
-  "duration": "15 دقيقة",
-  "skills": ["المهارة المستهدفة"]
-}
-```
+7 أنشطة متنوعة (واحد لكل يوم) بصيغة JSON
 
 ## 9. التنبيه المختص (Specialist Alert)
 - **specialistAlert**: true/false
@@ -191,24 +182,10 @@ ${sessionsText}
 - فرط النشاط
 
 ## 11. المقارنة مع الفئة العمرية (Comparison)
-JSON يوضح موقع الطفل بين أقرانه:
-```json
-{
-  "percentile": 65,
-  "strengths_compared_to_peers": ["..."],
-  "areas_behind_peers": ["..."]
-}
-```
+JSON يوضح موقع الطفل بين أقرانه
 
 ## 12. مؤشرات التقدم (Progress Indicators)
-مقاييس يمكن تتبعها:
-```json
-{
-  "completion_rate": 0.85,
-  "improvement_potential": "high",
-  "consistency_score": 0.72
-}
-```
+مقاييس يمكن تتبعها بصيغة JSON
 
 ## 13. مستوى الثقة (Confidence Level)
 رقم من 0.0 إلى 1.0 يعكس مدى ثقتك في التحليل بناءً على:
@@ -226,55 +203,7 @@ JSON يوضح موقع الطفل بين أقرانه:
 - كن صادقاً لكن إيجابياً
 
 # صيغة الإخراج
-أجب بتنسيق JSON فقط:
-
-\`\`\`json
-{
-  "overallScore": number,
-  "overallLevel": "below_normal" | "normal" | "above_normal",
-  "domainScores": {
-    "memory": number,
-    "attention": number,
-    "logic": number,
-    "visual_thinking": number,
-    "pattern_recognition": number,
-    "creativity": number
-  },
-  "skillBreakdown": {
-    "description": "string",
-    "details": {}
-  },
-  "aiSummary": "string",
-  "detailedAnalysis": "string",
-  "strengths": ["string"],
-  "areasForImprovement": ["string"],
-  "explanations": ["string"],
-  "recommendations": ["string"],
-  "weeklyPlan": [
-    {
-      "day": 1,
-      "dayName": "الأحد",
-      "activity": "string",
-      "duration": "string",
-      "skills": ["string"]
-    }
-  ],
-  "specialistAlert": boolean,
-  "specialistAlertReason": "string or null",
-  "behavioralConcerns": ["string"],
-  "comparisonWithAgeGroup": {
-    "percentile": number,
-    "strengths_compared_to_peers": ["string"],
-    "areas_behind_peers": ["string"]
-  },
-  "progressIndicators": {
-    "completion_rate": number,
-    "improvement_potential": "low" | "medium" | "high",
-    "consistency_score": number
-  },
-  "confidenceLevel": number
-}
-\`\`\``;
+أجب بتنسيق JSON فقط مع كل الحقول المطلوبة`;
 
   try {
     const response = await openai.chat.completions.create({

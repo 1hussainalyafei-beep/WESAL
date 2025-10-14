@@ -21,7 +21,8 @@ import { StorePage } from './components/Store/StorePage';
 import { AIAssistantPage } from './components/AIAssistant/AIAssistantPage';
 import { supabase } from './lib/supabase';
 import { generateMiniReport, generateComprehensiveReport } from './services/openaiService';
-import { GameType, Child, GameSession, GameReport as GameReportType, ComprehensiveReport } from './types';
+import { assessmentPathManager } from './services/assessmentPathService';
+import { GameType, Child, AssessmentPath, GameReport as GameReportType } from './types';
 import { Loader2 } from 'lucide-react';
 
 type Screen =
@@ -42,19 +43,15 @@ type Screen =
   | 'store'
   | 'ai-assistant';
 
-type AssessmentMode = 'single' | 'all' | null;
+const ALL_GAMES: GameType[] = ['memory', 'attention', 'logic', 'visual', 'pattern', 'creative'];
 
 function App() {
   const { user, loading: authLoading } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
   const [selectedGame, setSelectedGame] = useState<GameType | null>(null);
   const [child, setChild] = useState<Child | null>(null);
+  const [currentPath, setCurrentPath] = useState<AssessmentPath | null>(null);
   const [currentReport, setCurrentReport] = useState<GameReportType | null>(null);
-  const [comprehensiveReport, setComprehensiveReport] = useState<ComprehensiveReport | null>(null);
-  const [reportLoading, setReportLoading] = useState(false);
-  const [completedGames, setCompletedGames] = useState<GameType[]>([]);
-  const [currentSessionReports, setCurrentSessionReports] = useState<GameReportType[]>([]);
-  const [assessmentMode, setAssessmentMode] = useState<AssessmentMode>(null);
   const [currentMiniReport, setCurrentMiniReport] = useState<any>(null);
   const [currentGameName, setCurrentGameName] = useState('');
 
@@ -106,25 +103,40 @@ function App() {
 
   const handleNavigate = (section: string) => {
     if (section === 'assessment') {
-      setCompletedGames([]);
-      setCurrentSessionReports([]);
-      setAssessmentMode(null);
+      setCurrentPath(null);
       setCurrentScreen('assessment-paths');
     } else {
       setCurrentScreen(section as Screen);
     }
   };
 
-  const handleSelectAssessmentPath = (path: 'single' | 'all' | 'view-reports') => {
+  const handleSelectAssessmentPath = async (path: 'single' | 'all' | 'view-reports') => {
+    if (!child) return;
+
     if (path === 'view-reports') {
       setCurrentScreen('reports');
-    } else {
-      setAssessmentMode(path);
+      return;
+    }
+
+    try {
+      const targetGames = path === 'all' ? ALL_GAMES : [];
+      const newPath = await assessmentPathManager.createPath(child.id, path, targetGames);
+      setCurrentPath(newPath);
       setCurrentScreen('game-sequence');
+    } catch (error) {
+      console.error('Error creating assessment path:', error);
     }
   };
 
-  const handleGameSelect = (gameType: GameType) => {
+  const handleGameSelect = async (gameType: GameType) => {
+    if (!child || !currentPath) return;
+
+    const isCompleted = await assessmentPathManager.isGameCompletedInPath(currentPath.id, gameType);
+    if (isCompleted) {
+      console.log('Game already completed in this path');
+      return;
+    }
+
     setSelectedGame(gameType);
     const gameNames: Record<GameType, string> = {
       memory: 'لعبة الذاكرة',
@@ -147,7 +159,7 @@ function App() {
   };
 
   const handleGameComplete = async (gameData: any) => {
-    if (!child || !selectedGame) return;
+    if (!child || !selectedGame || !currentPath) return;
 
     setCurrentScreen('analyzing');
 
@@ -162,6 +174,7 @@ function App() {
         .insert({
           child_id: child.id,
           game_type: selectedGame,
+          assessment_path_id: currentPath.id,
           score: gameData.score || 0,
           duration_seconds: gameData.duration,
           raw_data: gameData.rawData,
@@ -195,6 +208,12 @@ function App() {
 
       if (reportError) throw reportError;
 
+      await assessmentPathManager.addGameToPath(currentPath.id, selectedGame, session.id);
+      await assessmentPathManager.updatePathScore(currentPath.id, {
+        score: gameData.score || 0,
+        duration: gameData.duration,
+      });
+
       await supabase.from('behavior_logs').insert({
         child_id: child.id,
         event_type: 'game_complete',
@@ -202,8 +221,8 @@ function App() {
         metadata: { score: gptAnalysis.performanceScore, duration: gameData.duration },
       });
 
-      setCompletedGames([...completedGames, selectedGame]);
-      setCurrentSessionReports([...currentSessionReports, report]);
+      const updatedPath = await assessmentPathManager.getPathById(currentPath.id);
+      setCurrentPath(updatedPath);
       setCurrentReport(report);
       setCurrentMiniReport({
         game: selectedGame,
@@ -229,8 +248,12 @@ function App() {
     setCurrentScreen('mini-report');
   };
 
-  const handleMiniReportNext = () => {
-    if (assessmentMode === 'all' && completedGames.length < 6) {
+  const handleMiniReportNext = async () => {
+    if (!currentPath) return;
+
+    const progress = await assessmentPathManager.getPathProgress(currentPath.id);
+
+    if (progress.completed < progress.total) {
       setSelectedGame(null);
       setCurrentMiniReport(null);
       setCurrentScreen('game-sequence');
@@ -242,18 +265,13 @@ function App() {
   const handleMiniReportHome = () => {
     setSelectedGame(null);
     setCurrentMiniReport(null);
+    setCurrentPath(null);
     setCurrentScreen('home');
   };
 
   const handleMiniReportReplay = () => {
     setCurrentMiniReport(null);
     setCurrentScreen('game');
-  };
-
-  const handleNextGame = () => {
-    setSelectedGame(null);
-    setCurrentReport(null);
-    setCurrentScreen('game-sequence');
   };
 
   const handleBackFromGame = () => {
@@ -268,38 +286,37 @@ function App() {
     setCurrentScreen('game-sequence');
   };
 
-  const handleSkipGame = () => {
-    if (selectedGame) {
-      setCompletedGames([...completedGames, selectedGame]);
-    }
-    setSelectedGame(null);
-    setCurrentScreen('game-sequence');
-  };
-
   const handleGenerateFinalReport = async () => {
-    if (!child) return;
+    if (!child || !currentPath) return;
 
     setCurrentScreen('final-report-loading');
 
     try {
-      const { data: allReports, error } = await supabase
+      const { data: sessions, error: sessionsError } = await supabase
+        .from('game_sessions')
+        .select('*')
+        .in('id', currentPath.session_ids);
+
+      if (sessionsError) throw sessionsError;
+
+      const { data: allReports, error: reportsError } = await supabase
         .from('game_reports')
         .select('*')
-        .in('session_id', currentSessionReports.map(r => r.session_id))
+        .in('session_id', currentPath.session_ids)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (reportsError) throw reportsError;
 
       const childAge = Math.floor(
         (Date.now() - new Date(child.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000)
       );
 
-      const miniReportsData = allReports.map(report => ({
-        game_type: completedGames[allReports.indexOf(report)] as GameType,
+      const miniReportsData = allReports.map((report, index) => ({
+        game_type: sessions[index]?.game_type as GameType,
         performance_score: report.performance_score,
         performance_level: report.level,
         analysis_text: report.analysis,
-        observations: report.reasons || [],
+        observations: Array.isArray(report.reasons) ? report.reasons : [],
       }));
 
       const comprehensiveAnalysis = await generateComprehensiveReport(
@@ -312,6 +329,7 @@ function App() {
         .from('comprehensive_reports')
         .insert({
           child_id: child.id,
+          assessment_path_id: currentPath.id,
           overall_score: comprehensiveAnalysis.overallScore,
           cognitive_map: comprehensiveAnalysis.domainScores,
           detailed_analysis: comprehensiveAnalysis.aiSummary,
@@ -324,8 +342,9 @@ function App() {
 
       if (reportError) throw reportError;
 
-      setComprehensiveReport(finalReport);
-      setCurrentScreen('final-report');
+      await assessmentPathManager.linkComprehensiveReport(currentPath.id, finalReport.id);
+
+      setCurrentScreen('reports');
     } catch (error) {
       console.error('Error generating final report:', error);
       setCurrentScreen('game-sequence');
@@ -336,7 +355,7 @@ function App() {
     const gameProps = {
       onComplete: handleGameComplete,
       onBack: handleBackFromGame,
-      onSkip: handleSkipGame,
+      onSkip: handleBackFromGame,
     };
 
     switch (selectedGame) {
@@ -412,11 +431,17 @@ function App() {
     case 'game-sequence':
       return (
         <GameSequenceManager
-          completedGames={completedGames}
+          childId={child.id}
+          currentPath={currentPath}
           onSelectGame={handleGameSelect}
-          onBack={() => setCurrentScreen(assessmentMode ? 'assessment-paths' : 'home')}
+          onBack={() => {
+            if (currentPath) {
+              assessmentPathManager.abandonPath(currentPath.id);
+            }
+            setCurrentPath(null);
+            setCurrentScreen('assessment-paths');
+          }}
           onGenerateFinalReport={handleGenerateFinalReport}
-          mode={assessmentMode || 'all'}
         />
       );
 
@@ -440,10 +465,10 @@ function App() {
           reasons={currentMiniReport.reasons}
           tip={currentMiniReport.tip}
           gameName={currentGameName}
-          onNext={assessmentMode === 'all' ? handleMiniReportNext : undefined}
+          onNext={currentPath?.path_type === 'all' ? handleMiniReportNext : undefined}
           onHome={handleMiniReportHome}
           onReplay={handleMiniReportReplay}
-          showNext={assessmentMode === 'all'}
+          showNext={currentPath?.path_type === 'all'}
           gptAnalysis={currentMiniReport.gptAnalysis}
         />
       );
@@ -452,16 +477,12 @@ function App() {
       return (
         <GameReport
           report={currentReport}
-          loading={reportLoading}
-          onNextGame={handleNextGame}
+          loading={false}
+          onNextGame={() => setCurrentScreen('game-sequence')}
           onHome={() => setCurrentScreen('home')}
           onConsult={() => setCurrentScreen('consultation')}
         />
       );
-
-    case 'final-report':
-      if (!comprehensiveReport) return null;
-      return <ReportsPage childId={child.id} onBack={() => setCurrentScreen('home')} />;
 
     case 'reports':
       return <ReportsPage childId={child.id} onBack={() => setCurrentScreen('home')} />;

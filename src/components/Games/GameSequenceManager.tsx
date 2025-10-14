@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { GameType } from '../../types';
-import { CheckCircle2, Lock, Play } from 'lucide-react';
+import { GameType, AssessmentPath } from '../../types';
+import { assessmentPathManager } from '../../services/assessmentPathService';
+import { CheckCircle2, Lock, Play, Target } from 'lucide-react';
 
 interface GameInfo {
   type: GameType;
@@ -12,11 +13,11 @@ interface GameInfo {
 }
 
 interface GameSequenceManagerProps {
-  completedGames: GameType[];
+  childId: string;
+  currentPath: AssessmentPath | null;
   onSelectGame: (gameType: GameType) => void;
   onBack: () => void;
   onGenerateFinalReport: () => void;
-  mode?: 'single' | 'all';
 }
 
 const games: GameInfo[] = [
@@ -71,15 +72,63 @@ const games: GameInfo[] = [
 ];
 
 export function GameSequenceManager({
-  completedGames,
+  childId,
+  currentPath,
   onSelectGame,
   onBack,
   onGenerateFinalReport,
-  mode = 'all',
 }: GameSequenceManagerProps) {
-  const allGamesCompleted = completedGames.length === games.length;
-  const nextGameIndex = completedGames.length;
-  const isSingleMode = mode === 'single';
+  const [progress, setProgress] = useState({ completed: 0, total: 0, percentage: 0, nextGame: null as GameType | null });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadProgress();
+  }, [currentPath]);
+
+  const loadProgress = async () => {
+    if (!currentPath) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const pathProgress = await assessmentPathManager.getPathProgress(currentPath.id);
+      setProgress(pathProgress);
+    } catch (error) {
+      console.error('Error loading progress:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--gray-50)' }}>
+        <div className="text-lg" style={{ color: 'var(--primary-purple)' }}>
+          جارٍ التحميل...
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentPath) {
+    return (
+      <div className="min-h-screen p-6" style={{ backgroundColor: 'var(--gray-50)' }}>
+        <div className="max-w-4xl mx-auto text-center">
+          <p className="text-xl" style={{ color: 'var(--gray-400)' }}>
+            لم يتم العثور على مسار تقييم نشط
+          </p>
+          <button onClick={onBack} className="mt-6 btn-primary">
+            العودة
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const isSingleMode = currentPath.path_type === 'single';
+  const allGamesCompleted = progress.completed === progress.total && progress.total > 0;
+  const availableGames = isSingleMode ? games : games.filter(g => currentPath.target_games.includes(g.type));
 
   return (
     <div className="min-h-screen p-6 page-transition" style={{ backgroundColor: 'var(--gray-50)' }}>
@@ -100,36 +149,66 @@ export function GameSequenceManager({
               ? 'اختر أي لعبة واحصل على تقرير مصغر فوري'
               : 'أكمل جميع الألعاب للحصول على تقرير شامل'}
           </p>
+
           {!isSingleMode && (
-            <div className="flex items-center justify-center gap-2">
-              <div className="text-3xl font-bold" style={{ color: 'var(--primary-purple)' }}>
-                {completedGames.length}
+            <>
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <div className="text-3xl font-bold" style={{ color: 'var(--primary-purple)' }}>
+                  {progress.completed}
+                </div>
+                <span style={{ color: 'var(--gray-400)' }}>/</span>
+                <div className="text-3xl font-bold" style={{ color: 'var(--gray-400)' }}>
+                  {progress.total}
+                </div>
               </div>
-              <span style={{ color: 'var(--gray-400)' }}>/</span>
-              <div className="text-3xl font-bold" style={{ color: 'var(--gray-400)' }}>
-                {games.length}
+
+              <div className="max-w-md mx-auto">
+                <div className="w-full h-4 rounded-full" style={{ backgroundColor: 'var(--gray-200)' }}>
+                  <div
+                    className="h-full rounded-full transition-all duration-500 flex items-center justify-end pr-2"
+                    style={{
+                      width: `${progress.percentage}%`,
+                      backgroundColor: progress.percentage === 100 ? 'var(--green-success)' : 'var(--primary-purple)',
+                    }}
+                  >
+                    {progress.percentage > 20 && (
+                      <span className="text-xs font-bold text-white">
+                        {progress.percentage}%
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
+
+              {progress.nextGame && (
+                <div className="mt-4 flex items-center justify-center gap-2 text-sm font-semibold"
+                  style={{ color: 'var(--primary-purple)' }}>
+                  <Target className="w-4 h-4" />
+                  <span>اللعبة التالية: {games.find(g => g.type === progress.nextGame)?.title}</span>
+                </div>
+              )}
+            </>
           )}
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-          {games.map((game, index) => {
-            const isCompleted = completedGames.includes(game.type);
-            const isUnlocked = isSingleMode || index === 0 || completedGames.includes(games[index - 1].type);
-            const isCurrent = index === nextGameIndex;
+          {availableGames.map((game) => {
+            const isCompleted = currentPath.completed_games?.includes(game.type) || false;
+            const isCurrent = !isSingleMode && progress.nextGame === game.type;
+            const isLocked = !isSingleMode && !isCompleted && progress.nextGame !== game.type;
 
             return (
               <button
                 key={game.type}
-                onClick={() => isUnlocked && !isCompleted && onSelectGame(game.type)}
-                disabled={!isUnlocked || isCompleted}
+                onClick={() => !isCompleted && !isLocked && onSelectGame(game.type)}
+                disabled={isCompleted || isLocked}
                 className={`card p-6 text-center relative transition-all duration-200 ${
-                  isUnlocked && !isCompleted ? 'hover:scale-105 cursor-pointer' : 'opacity-60 cursor-not-allowed'
+                  !isCompleted && !isLocked ? 'hover:scale-105 cursor-pointer' : 'opacity-60 cursor-not-allowed'
                 }`}
                 style={{
                   backgroundColor: isCompleted ? 'var(--green-success)' : 'var(--white)',
                   border: isCurrent ? '3px solid var(--primary-purple)' : 'none',
+                  boxShadow: isCurrent ? '0 4px 20px rgba(91, 75, 157, 0.3)' : undefined,
                 }}
               >
                 {isCompleted && (
@@ -138,7 +217,7 @@ export function GameSequenceManager({
                   </div>
                 )}
 
-                {!isUnlocked && (
+                {isLocked && (
                   <div className="absolute top-3 left-3">
                     <Lock className="w-6 h-6" style={{ color: 'var(--gray-400)' }} />
                   </div>
@@ -162,7 +241,7 @@ export function GameSequenceManager({
                 </p>
 
                 {isCurrent && !isCompleted && (
-                  <div className="flex items-center justify-center gap-2 text-sm font-semibold"
+                  <div className="flex items-center justify-center gap-2 text-sm font-semibold animate-pulse"
                     style={{ color: 'var(--primary-purple)' }}>
                     <Play className="w-4 h-4" />
                     <span>العب الآن</span>
@@ -174,14 +253,20 @@ export function GameSequenceManager({
                     مكتمل ✓
                   </div>
                 )}
+
+                {isLocked && (
+                  <div className="text-xs" style={{ color: 'var(--gray-400)' }}>
+                    مقفل
+                  </div>
+                )}
               </button>
             );
           })}
         </div>
 
-        {allGamesCompleted && (
-          <div className="card p-8 text-center bg-gradient-to-br from-purple-500 to-pink-500 text-white">
-            <div className="text-6xl mb-4">🎉</div>
+        {allGamesCompleted && !isSingleMode && (
+          <div className="card p-8 text-center bg-gradient-to-br from-purple-500 to-pink-500 text-white animate-fadeIn">
+            <div className="text-6xl mb-4 animate-bounce">🎉</div>
             <h2 className="text-3xl font-bold mb-3">
               مبروك! أكملت جميع الألعاب
             </h2>
@@ -190,11 +275,33 @@ export function GameSequenceManager({
             </p>
             <button
               onClick={onGenerateFinalReport}
-              className="px-8 py-4 rounded-xl font-bold text-xl bg-white hover:bg-gray-100 transition-colors"
+              className="px-8 py-4 rounded-xl font-bold text-xl bg-white hover:bg-gray-100 transition-all hover:scale-105"
               style={{ color: 'var(--primary-purple)' }}
             >
               إنشاء التقرير الشامل
             </button>
+          </div>
+        )}
+
+        {currentPath.average_score && (
+          <div className="card p-6 mt-6">
+            <h3 className="text-lg font-bold mb-3" style={{ color: 'var(--primary-purple)' }}>
+              إحصائيات المسار
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-4 rounded-xl" style={{ backgroundColor: 'var(--accent-blue-light)' }}>
+                <div className="text-2xl font-bold" style={{ color: 'var(--primary-purple)' }}>
+                  {Math.round(currentPath.average_score)}
+                </div>
+                <div className="text-sm" style={{ color: 'var(--gray-400)' }}>المتوسط</div>
+              </div>
+              <div className="text-center p-4 rounded-xl" style={{ backgroundColor: 'var(--secondary-pink-light)' }}>
+                <div className="text-2xl font-bold" style={{ color: 'var(--primary-purple)' }}>
+                  {Math.floor(currentPath.total_duration_seconds / 60)}
+                </div>
+                <div className="text-sm" style={{ color: 'var(--gray-400)' }}>دقيقة</div>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -82,3 +82,23 @@ export interface StoreProduct {
   recommended_for: string[];
   created_at: string;
 }
+
+export interface AssessmentPath {
+  id: string;
+  child_id: string;
+  path_type: 'single' | 'all';
+  status: 'in_progress' | 'completed' | 'abandoned';
+  target_games: GameType[];
+  completed_games: GameType[];
+  session_ids: string[];
+  comprehensive_report_id: string | null;
+  total_games: number;
+  completed_games_count: number;
+  average_score: number | null;
+  total_duration_seconds: number;
+  started_at: string;
+  completed_at: string | null;
+  last_activity_at: string;
+  created_at: string;
+  updated_at: string;
+}

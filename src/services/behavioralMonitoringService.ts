@@ -59,9 +59,7 @@ export class BehavioralMonitor {
     await this.detectEarlyExitPattern(gameType);
   }
 
-  async trackHesitation(gameType: GameType, hes
-
-itationTime: number) {
+  async trackHesitation(gameType: GameType, hesitationTime: number) {
     await supabase.from('behavior_logs').insert({
       child_id: this.childId,
       event_type: 'hesitation',
