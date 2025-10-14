@@ -262,6 +262,13 @@ ${gameSpecificData}
     reportData: MiniReportData
   ): Promise<string | null> {
     try {
+      console.log('💾 Attempting to save mini report:', {
+        sessionId,
+        childId,
+        gameType,
+        reportData
+      });
+
       const { data, error } = await supabase
         .from('mini_reports')
         .insert({
@@ -279,12 +286,20 @@ ${gameSpecificData}
 
       if (error) {
         console.error('Error saving mini report:', error);
+        console.error('❌ Supabase error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         return null;
       }
 
+      console.log('✅ Mini report saved successfully:', data?.id);
       return data?.id || null;
     } catch (error) {
       console.error('Error saving mini report:', error);
+      console.error('❌ Catch block error:', error);
       return null;
     }
   }

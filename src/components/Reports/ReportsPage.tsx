@@ -52,6 +52,8 @@ export function ReportsPage({ childId, onBack }: ReportsPageProps) {
   }, [childId]);
 
   const loadReports = async () => {
+    console.log('📖 Loading reports for child:', childId);
+    
     try {
       // Load old comprehensive reports
       const { data: oldReports, error: oldError } = await supabase
@@ -62,6 +64,7 @@ export function ReportsPage({ childId, onBack }: ReportsPageProps) {
 
       if (oldError) throw oldError;
       setReports(oldReports || []);
+      console.log('📊 Old comprehensive reports loaded:', oldReports?.length || 0);
 
       const { data: newReports, error: newError } = await supabase
         .from('final_reports')
@@ -71,6 +74,21 @@ export function ReportsPage({ childId, onBack }: ReportsPageProps) {
 
       if (newError) throw newError;
       setFinalReports(newReports || []);
+      console.log('📋 Final reports loaded:', newReports?.length || 0);
+
+      // Load mini reports for debugging
+      const { data: miniReports, error: miniError } = await supabase
+        .from('mini_reports')
+        .select('*')
+        .eq('child_id', childId)
+        .order('created_at', { ascending: false });
+
+      if (!miniError) {
+        console.log('🎮 Mini reports found:', miniReports?.length || 0);
+        console.log('Mini reports data:', miniReports);
+      } else {
+        console.error('❌ Error loading mini reports:', miniError);
+      }
 
       // Load assessment paths data for each final report
       if (newReports && newReports.length > 0) {
@@ -93,10 +111,12 @@ export function ReportsPage({ childId, onBack }: ReportsPageProps) {
             };
           });
           setPathsData(pathsMap);
+          console.log('🛤️ Assessment paths loaded:', paths.length);
         }
       }
     } catch (error) {
       console.error('Error loading reports:', error);
+      console.error('❌ Full error details:', error);
     } finally {
       setLoading(false);
     }

@@ -179,6 +179,13 @@ function App() {
   const handleGameComplete = async (gameData: any) => {
     if (!child || !selectedGame || !currentPath) return;
 
+    console.log('🎮 Game completed:', {
+      childId: child.id,
+      gameType: selectedGame,
+      pathId: currentPath.id,
+      gameData
+    });
+
     setCurrentScreen('analyzing');
 
     try {
@@ -210,6 +217,7 @@ function App() {
         .single();
 
       if (sessionError) throw sessionError;
+      console.log('✅ Session created:', session.id);
 
       // تسجيل السلوك
       await BehaviorTrackingService.logGameComplete(
@@ -227,19 +235,22 @@ function App() {
         session,
         childAge
       );
+      console.log('📊 Mini report generated:', miniReportData);
 
       // حفظ التقرير المصغر
       if (miniReportData) {
-        await MiniReportService.saveMiniReport(
+        const savedReportId = await MiniReportService.saveMiniReport(
           session.id,
           child.id,
           selectedGame,
           miniReportData
         );
+        console.log('💾 Mini report saved:', savedReportId);
       }
 
       // إنشاء تحليل GPT (للتوافق مع النظام القديم)
       const gptAnalysis = await generateMiniReport(session, childAge);
+      console.log('🤖 GPT analysis:', gptAnalysis);
 
       // حفظ تقرير اللعبة
       const { data: report, error: reportError } = await supabase
@@ -261,6 +272,7 @@ function App() {
         .single();
 
       if (reportError) throw reportError;
+      console.log('📋 Game report saved:', report.id);
 
       // تحديث مسار التقييم
       await assessmentPathManager.addGameToPath(currentPath.id, selectedGame, session.id);
@@ -289,8 +301,11 @@ function App() {
           recommendations: [gptAnalysis.quickTip],
         }
       });
+
+      console.log('🎯 All data saved successfully!');
     } catch (error) {
       console.error('Error handling game completion:', error);
+      console.error('❌ Full error details:', error);
       setCurrentScreen('game-sequence');
     }
   };
