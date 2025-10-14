@@ -115,7 +115,7 @@ export function MainHome({ childName, onNavigate }: MainHomeProps) {
                     className="rounded-2xl p-6 text-right hover:scale-105 transition-all duration-200 hover:shadow-xl"
                     style={{
                       background: item.id === 'store' 
-                        ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                        ? 'linear-gradient(135deg, #8D6E63 0%, #A1887F 100%)'
                         : 'linear-gradient(135deg, #26A69A 0%, #4DB6AC 100%)',
                       boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                     }}
