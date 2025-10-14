@@ -34,9 +34,9 @@ export class BehaviorTrackingService {
     try {
       await supabase.from('behavior_logs').insert({
         child_id: childId,
-        session_id: sessionId,
         event_type: eventType,
-        event_data: eventData
+        game_type: eventData.game_type || '',
+        metadata: eventData
       });
     } catch (error) {
       console.error('Error logging behavior event:', error);

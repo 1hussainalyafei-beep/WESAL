@@ -283,6 +283,7 @@ ${reportsText}
         return [];
       }
 
+      console.log('Final reports found:', data?.length || 0);
       return data || [];
     } catch (error) {
       console.error('Error fetching final reports:', error);

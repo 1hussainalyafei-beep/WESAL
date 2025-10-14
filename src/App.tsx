@@ -184,15 +184,8 @@ function App() {
     try {
       const startTime = Date.now();
 
-      const { data: childProfile } = await supabase
-        .from('children_profiles')
-        .select('*')
-        .eq('user_id', user?.id)
-        .maybeSingle();
-
-      const childAge = childProfile
-        ? Math.floor((Date.now() - new Date(childProfile.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000))
-        : Math.floor((Date.now() - new Date(child.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000));
+      // حساب عمر الطفل
+      const childAge = Math.floor((Date.now() - new Date(child.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000));
 
       // إنشاء جلسة اللعبة بالبيانات الحقيقية
       const { data: session, error: sessionError } = await supabase
@@ -219,29 +212,27 @@ function App() {
       if (sessionError) throw sessionError;
 
       // تسجيل السلوك
-      if (childProfile) {
-        await BehaviorTrackingService.logGameComplete(
-          childProfile.id,
-          session.id,
-          selectedGame,
-          gameData.duration
-        );
-      }
+      await BehaviorTrackingService.logGameComplete(
+        child.id,
+        session.id,
+        selectedGame,
+        gameData.duration
+      );
 
       // إنشاء التقرير المصغر بالبيانات الحقيقية
       const miniReportData = await MiniReportService.generateMiniReport(
         session.id,
-        childProfile?.id || child.id,
+        child.id,
         selectedGame,
         session,
         childAge
       );
 
       // حفظ التقرير المصغر
-      if (miniReportData && childProfile) {
+      if (miniReportData) {
         await MiniReportService.saveMiniReport(
           session.id,
-          childProfile.id,
+          child.id,
           selectedGame,
           miniReportData
         );
@@ -352,18 +343,6 @@ function App() {
     setCurrentScreen('final-report-loading');
 
     try {
-      const { data: childProfile } = await supabase
-        .from('children_profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (!childProfile) {
-        console.error('Child profile not found');
-        setCurrentScreen('game-sequence');
-        return;
-      }
-
       const miniReports = await MiniReportService.getMiniReportsByPathId(currentPath.id);
 
       if (miniReports.length === 0) {
@@ -373,21 +352,21 @@ function App() {
       }
 
       const childAge = Math.floor(
-        (Date.now() - new Date(childProfile.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000)
+        (Date.now() - new Date(child.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000)
       );
 
       const finalReportData = await FinalReportService.generateFinalReport(
         currentPath.id,
-        childProfile.id,
+        child.id,
         miniReports,
         childAge,
-        childProfile.child_name
+        child.name
       );
 
       if (finalReportData) {
         await FinalReportService.saveFinalReport(
           currentPath.id,
-          childProfile.id,
+          child.id,
           finalReportData
         );
       }
@@ -417,7 +396,7 @@ function App() {
 
       const comprehensiveAnalysis = await generateComprehensiveReport(
         miniReportsData,
-        childProfile.child_name,
+        child.name,
         childAge
       );
 

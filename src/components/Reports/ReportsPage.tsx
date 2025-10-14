@@ -63,24 +63,10 @@ export function ReportsPage({ childId, onBack }: ReportsPageProps) {
       if (oldError) throw oldError;
       setReports(oldReports || []);
 
-      // Load new final reports using children_profiles
-      if (!user) return;
-
-      const { data: childProfile } = await supabase
-        .from('children_profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (!childProfile) {
-        setLoading(false);
-        return;
-      }
-
       const { data: newReports, error: newError } = await supabase
         .from('final_reports')
         .select('*')
-        .eq('child_id', childProfile.id)
+        .eq('child_id', childId)
         .order('created_at', { ascending: false });
 
       if (newError) throw newError;

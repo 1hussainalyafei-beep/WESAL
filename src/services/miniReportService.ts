@@ -320,6 +320,7 @@ ${gameSpecificData}
         return [];
       }
 
+      console.log('Mini reports found:', miniReports?.length || 0);
       return miniReports || [];
     } catch (error) {
       console.error('Error getting mini reports:', error);
