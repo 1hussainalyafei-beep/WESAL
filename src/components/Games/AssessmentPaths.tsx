@@ -108,40 +108,6 @@ export function AssessmentPaths({ onSelectPath, onBack }: AssessmentPathsProps) 
                 </div>
               </div>
             </button>
-                <ArrowRight className="w-5 h-5 text-white" />
-                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center p-1">
-                  <img src="/w.png" alt="وصال" className="w-full h-full object-contain opacity-80" />
-                </div>
-              </div>
-                <div
-                  className="w-20 h-20 rounded-2xl flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: path.iconBg }}
-                >
-                  <path.icon className="w-10 h-10 text-white" strokeWidth={2.5} />
-                </div>
-
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-white mb-2">
-                    {path.title}
-                  </h3>
-                  <p className="text-white/90 text-base leading-relaxed mb-2">
-                    {path.description}
-                  </p>
-                  {path.duration && (
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg"
-                         style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                      <span className="text-white text-sm font-semibold">
-                        ⏱️ {path.duration}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex-shrink-0">
-                  <ArrowRight className="w-8 h-8 text-white" style={{ transform: 'rotate(180deg)' }} />
-                </div>
-              </div>
-            </button>
           ))}
         </div>
 
