@@ -23,23 +23,7 @@ export function MainHome({ childName, onNavigate }: MainHomeProps) {
     ));
   };
 
-  const menuItems = [
-    {
-      id: 'assessment',
-      title: 'ابدأ التقييم',
-      subtitle: 'العب واكتشف قدراتك',
-      icon: Brain,
-      bgColor: '#5B4B9D',
-      iconBg: '#7B68B0',
-    },
-    {
-      id: 'reports',
-      title: 'التقارير',
-      subtitle: 'شاهد تقدمك',
-      icon: BarChart3,
-      bgColor: '#42A5F5',
-      iconBg: '#64B5F6',
-    },
+  const remainingMenuItems = [
     {
       id: 'consultation',
       title: 'استشارة طبيب',
@@ -47,22 +31,6 @@ export function MainHome({ childName, onNavigate }: MainHomeProps) {
       icon: Stethoscope,
       bgColor: '#26A69A',
       iconBg: '#4DB6AC',
-    },
-    {
-      id: 'ai-assistant',
-      title: 'المساعد الذكي',
-      subtitle: 'اسأل واستكشف',
-      icon: Sparkles,
-      bgColor: '#7E57C2',
-      iconBg: '#9575CD',
-    },
-    {
-      id: 'behavior',
-      title: 'المراقبة السلوكية',
-      subtitle: 'تتبع أنشطتك',
-      icon: Eye,
-      bgColor: '#FF7043',
-      iconBg: '#FF8A65',
     },
     {
       id: 'store',
@@ -104,36 +72,78 @@ export function MainHome({ childName, onNavigate }: MainHomeProps) {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-3 gap-6 mb-8">
-          <div className="lg:col-span-2">
-            <h2 className="text-2xl font-bold mb-6" style={{ color: 'var(--primary-purple)' }}>
-              اختر نشاطك
-            </h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {menuItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => onNavigate(item.id)}
-                  className="rounded-2xl p-6 text-right hover:scale-105 transition-all duration-200 hover:shadow-xl"
-                  style={{
-                    backgroundColor: item.bgColor,
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                  }}
-                >
-                  <div className="flex items-center justify-center mb-4">
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                         style={{ backgroundColor: item.iconBg }}>
-                      <item.icon className="w-8 h-8 text-white" strokeWidth={2.5} />
+        <div className="grid lg:grid-cols-3 gap-8 mb-8">
+          <div className="lg:col-span-2 space-y-8">
+            {/* الزر الرئيسي الكبير */}
+            <div className="text-center">
+              <h2 className="text-3xl font-bold mb-8" style={{ color: 'var(--primary-purple)' }}>
+                ابدأ رحلتك التعليمية
+              </h2>
+              <button
+                onClick={() => window.open('https://appwisal.bolt.host/', '_blank')}
+                className="relative group w-full max-w-2xl mx-auto p-8 rounded-3xl text-center transition-all duration-300 hover:scale-105 hover:shadow-2xl transform"
+                style={{
+                  background: 'linear-gradient(135deg, #5B4B9D 0%, #7B68B0 50%, #9575CD 100%)',
+                  boxShadow: '0 8px 32px rgba(91, 75, 157, 0.4)',
+                }}
+              >
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                
+                <div className="relative z-10">
+                  <div className="w-24 h-24 mx-auto mb-6 rounded-3xl flex items-center justify-center p-4"
+                       style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
+                    <img src="/w.png" alt="وصال" className="w-full h-full object-contain" />
+                  </div>
+                  
+                  <h3 className="text-4xl font-bold text-white mb-4">
+                    🎮 ابدأ الألعاب التفاعلية
+                  </h3>
+                  
+                  <p className="text-xl text-white/90 mb-6 leading-relaxed">
+                    اكتشف قدراتك المعرفية من خلال ألعاب ممتعة وتفاعلية
+                  </p>
+                  
+                  <div className="flex items-center justify-center gap-3 text-lg font-semibold text-white">
+                    <span>انطلق الآن</span>
+                    <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-2 transition-transform duration-300">
+                      <span className="text-2xl">🚀</span>
                     </div>
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-2">
-                    {item.title}
-                  </h3>
-                  <p className="text-white/90 text-sm leading-relaxed">
-                    {item.subtitle}
-                  </p>
-                </button>
-              ))}
+                </div>
+              </button>
+            </div>
+
+            {/* الأزرار المتبقية */}
+            <div>
+              <h3 className="text-2xl font-bold mb-6" style={{ color: 'var(--primary-purple)' }}>
+                خدمات إضافية
+              </h3>
+              <div className="grid sm:grid-cols-2 gap-6">
+                {remainingMenuItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => onNavigate(item.id)}
+                    className="rounded-2xl p-6 text-right hover:scale-105 transition-all duration-200 hover:shadow-xl"
+                    style={{
+                      backgroundColor: item.bgColor,
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    <div className="flex items-center justify-center mb-4">
+                      <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
+                           style={{ backgroundColor: item.iconBg }}>
+                        <item.icon className="w-8 h-8 text-white" strokeWidth={2.5} />
+                      </div>
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-2">
+                      {item.title}
+                    </h3>
+                    <p className="text-white/90 text-sm leading-relaxed">
+                      {item.subtitle}
+                    </p>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
