@@ -71,7 +71,12 @@ export function AssessmentPaths({ onSelectPath, onBack }: AssessmentPathsProps) 
                 boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
               }}
             >
-              <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <ArrowRight className="w-5 h-5 text-white" />
+                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center p-1">
+                  <img src="/w.png" alt="وصال" className="w-full h-full object-contain opacity-80" />
+                </div>
+              </div>
                 <div
                   className="w-20 h-20 rounded-2xl flex items-center justify-center flex-shrink-0"
                   style={{ backgroundColor: path.iconBg }}

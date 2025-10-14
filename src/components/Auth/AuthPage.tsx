@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Heart, Mail, Lock, User, Calendar, Phone, Baby } from 'lucide-react';
+import { Mail, Lock, User, Calendar, Phone, Baby } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 interface AuthPageProps {
@@ -83,9 +83,9 @@ export function AuthPage({ onVisitorMode }: AuthPageProps) {
                boxShadow: '0 8px 32px rgba(91, 75, 157, 0.2)'
              }}>
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4"
-              style={{ backgroundColor: '#5B4B9D' }}>
-              <Heart className="w-10 h-10 text-white" fill="white" />
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-2xl mb-4 bg-white p-3"
+              style={{ border: '3px solid #5B4B9D' }}>
+              <img src="/w.png" alt="وصال" className="w-full h-full object-contain" />
             </div>
             <h2 className="text-3xl font-bold mb-2" style={{ color: '#5B4B9D' }}>
               {isSignUp ? 'إنشاء حساب' : 'تسجيل الدخول'}

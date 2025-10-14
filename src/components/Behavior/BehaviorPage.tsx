@@ -78,7 +78,12 @@ export function BehaviorPage({ childId, onBack }: BehaviorPageProps) {
             className="p-2 rounded-xl transition-colors"
             style={{ backgroundColor: 'rgba(255,255,255,0.3)' }}
           >
-            <ArrowLeft className="w-6 h-6" style={{ color: '#5B4B9D' }} />
+              <div className="flex items-center gap-2">
+                <ArrowLeft className="w-5 h-5" style={{ color: '#5B4B9D' }} />
+                <div className="w-7 h-7 rounded-lg bg-white/30 flex items-center justify-center p-1">
+                  <img src="/w.png" alt="وصال" className="w-full h-full object-contain" />
+                </div>
+              </div>
           </button>
           <div>
             <h1 className="text-2xl font-bold" style={{ color: '#5B4B9D' }}>

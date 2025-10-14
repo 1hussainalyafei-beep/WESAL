@@ -33,7 +33,10 @@ export function ConsultationPage({ onBack }: ConsultationPageProps) {
     <div className="min-h-screen p-6" style={{ backgroundColor: 'var(--gray-100)' }}>
       <div className="max-w-6xl mx-auto">
         <button onClick={onBack} className="mb-6 btn-secondary flex items-center gap-2">
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-4 h-4" />
+          <div className="w-6 h-6 rounded bg-white/20 flex items-center justify-center p-1">
+            <img src="/w.png" alt="وصال" className="w-full h-full object-contain" />
+          </div>
           العودة
         </button>
 

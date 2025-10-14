@@ -43,8 +43,8 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
 
       <div className="text-center px-6 relative z-10 page-transition">
         <div className="flex items-center justify-center gap-4 mb-12">
-          <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center">
-            <Heart className="w-10 h-10" style={{ color: '#FFB6D9' }} fill="#FFB6D9" />
+          <div className="w-24 h-24 rounded-2xl bg-white flex items-center justify-center p-2">
+            <img src="/w.png" alt="وصال" className="w-full h-full object-contain" />
           </div>
         </div>
 

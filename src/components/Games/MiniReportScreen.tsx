@@ -51,6 +51,11 @@ export function MiniReportScreen({
       <header className="p-6 rounded-b-3xl shadow-lg"
               style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
         <div className="max-w-4xl mx-auto">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center p-2">
+              <img src="/w.png" alt="وصال" className="w-full h-full object-contain opacity-90" />
+            </div>
+          </div>
           <h1 className="text-2xl font-bold text-center text-white">
             تقرير {gameName}
           </h1>

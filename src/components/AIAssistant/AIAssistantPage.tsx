@@ -43,8 +43,8 @@ export function AIAssistantPage({ onBack }: AIAssistantPageProps) {
             <ArrowRight className="w-6 h-6" />
           </button>
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center">
-              <Sparkles className="w-6 h-6" style={{ color: '#FFB6D9' }} />
+            <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center p-2">
+              <img src="/w.png" alt="وصال" className="w-full h-full object-contain" />
             </div>
             <div>
               <h1 className="text-2xl font-bold">المساعد الذكي</h1>

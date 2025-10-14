@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Brain, Stethoscope, BarChart3, Eye, ShoppingBag, LogOut, Heart, Sparkles } from 'lucide-react';
+import { Brain, Stethoscope, BarChart3, Eye, ShoppingBag, LogOut, Sparkles } from 'lucide-react';
 import { DailyTasks } from './DailyTasks';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -80,8 +80,8 @@ export function MainHome({ childName, onNavigate }: MainHomeProps) {
               style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center">
-              <Brain className="w-7 h-7" style={{ color: '#667eea' }} />
+            <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center p-2">
+              <img src="/w.png" alt="وصال" className="w-full h-full object-contain" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">
