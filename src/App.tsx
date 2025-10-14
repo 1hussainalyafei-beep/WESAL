@@ -21,7 +21,6 @@ import { StorePage } from './components/Store/StorePage';
 import { AIAssistantPage } from './components/AIAssistant/AIAssistantPage';
 import { supabase } from './lib/supabase';
 import { generateMiniReport, generateComprehensiveReport } from './services/openaiService';
-import { generateMiniReport as generateLocalMiniReport } from './services/scoringService';
 import { GameType, Child, GameSession, GameReport as GameReportType, ComprehensiveReport } from './types';
 import { Loader2 } from 'lucide-react';
 
@@ -158,15 +157,12 @@ function App() {
         (Date.now() - new Date(child.birth_date).getTime()) / (365 * 24 * 60 * 60 * 1000)
       );
 
-      const rawEvents = gameData.rawData?.events || [];
-      const localMiniReport = generateLocalMiniReport(rawEvents, selectedGame, childAge);
-
       const { data: session, error: sessionError } = await supabase
         .from('game_sessions')
         .insert({
           child_id: child.id,
           game_type: selectedGame,
-          score: localMiniReport.score,
+          score: gameData.score || 0,
           duration_seconds: gameData.duration,
           raw_data: gameData.rawData,
           completed: true,
@@ -185,11 +181,11 @@ function App() {
           session_id: session.id,
           analysis: gptAnalysis.analysisText,
           performance_score: gptAnalysis.performanceScore,
-          status: localMiniReport.status,
-          sub_scores: localMiniReport.subScores,
+          status: gptAnalysis.performanceLevel === 'above_normal' ? 'ممتاز' : gptAnalysis.performanceLevel === 'normal' ? 'جيد' : 'يحتاج تحسين',
+          sub_scores: {},
           reasons: gptAnalysis.observations,
           tip: gptAnalysis.quickTip,
-          flags: localMiniReport.flags,
+          flags: [],
           strengths: gptAnalysis.observations,
           recommendations: [gptAnalysis.quickTip],
           level: gptAnalysis.performanceLevel,
@@ -210,8 +206,13 @@ function App() {
       setCurrentSessionReports([...currentSessionReports, report]);
       setCurrentReport(report);
       setCurrentMiniReport({
-        ...localMiniReport,
+        game: selectedGame,
         score: gptAnalysis.performanceScore,
+        status: gptAnalysis.performanceLevel === 'above_normal' ? 'ممتاز' : gptAnalysis.performanceLevel === 'normal' ? 'جيد' : 'يحتاج تحسين',
+        subScores: {},
+        reasons: gptAnalysis.observations,
+        tip: gptAnalysis.quickTip,
+        flags: [],
         gptAnalysis: {
           analysis: gptAnalysis.analysisText,
           strengths: gptAnalysis.observations,
