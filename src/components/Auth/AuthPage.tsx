@@ -83,8 +83,8 @@ export function AuthPage({ onVisitorMode }: AuthPageProps) {
                boxShadow: '0 8px 32px rgba(91, 75, 157, 0.2)'
              }}>
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-24 h-24 rounded-2xl mb-4 bg-white p-3"
-              style={{ border: '3px solid #5B4B9D' }}>
+            <div className="inline-flex items-center justify-center w-32 h-32 rounded-3xl mb-4 p-4"
+                 style={{ background: 'linear-gradient(135deg, #5B4B9D 0%, #7B68B0 50%, #9575CD 100%)' }}>
               <img src="/w.png" alt="وصال" className="w-full h-full object-contain" />
             </div>
             <h2 className="text-3xl font-bold mb-2" style={{ color: '#5B4B9D' }}>

@@ -43,7 +43,8 @@ export function AIAssistantPage({ onBack }: AIAssistantPageProps) {
             <ArrowRight className="w-6 h-6" />
           </button>
           <div className="flex items-center gap-3">
-            <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center p-2">
+            <div className="w-16 h-16 rounded-3xl flex items-center justify-center p-3"
+                 style={{ background: 'linear-gradient(135deg, #5B4B9D 0%, #7B68B0 50%, #9575CD 100%)' }}>
               <img src="/w.png" alt="وصال" className="w-full h-full object-contain" />
             </div>
             <div>

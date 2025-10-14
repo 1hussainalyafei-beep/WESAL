@@ -43,7 +43,8 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
 
       <div className="text-center px-6 relative z-10 page-transition">
         <div className="flex items-center justify-center gap-4 mb-12">
-          <div className="w-24 h-24 rounded-2xl bg-white flex items-center justify-center p-2">
+          <div className="w-32 h-32 rounded-3xl flex items-center justify-center p-3"
+               style={{ background: 'linear-gradient(135deg, #5B4B9D 0%, #7B68B0 50%, #9575CD 100%)' }}>
             <img src="/w.png" alt="وصال" className="w-full h-full object-contain" />
           </div>
         </div>

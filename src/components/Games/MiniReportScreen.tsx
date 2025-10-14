@@ -52,7 +52,8 @@ export function MiniReportScreen({
               style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center p-2">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center p-3"
+                 style={{ background: 'linear-gradient(135deg, #5B4B9D 0%, #7B68B0 50%, #9575CD 100%)' }}>
               <img src="/w.png" alt="وصال" className="w-full h-full object-contain opacity-90" />
             </div>
           </div>

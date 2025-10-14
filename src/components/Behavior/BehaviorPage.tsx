@@ -80,7 +80,8 @@ export function BehaviorPage({ childId, onBack }: BehaviorPageProps) {
           >
               <div className="flex items-center gap-2">
                 <ArrowLeft className="w-5 h-5" style={{ color: '#5B4B9D' }} />
-                <div className="w-7 h-7 rounded-lg bg-white/30 flex items-center justify-center p-1">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center p-2"
+                     style={{ background: 'linear-gradient(135deg, #5B4B9D 0%, #7B68B0 50%, #9575CD 100%)' }}>
                   <img src="/w.png" alt="وصال" className="w-full h-full object-contain" />
                 </div>
               </div>

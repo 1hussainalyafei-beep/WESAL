@@ -80,7 +80,8 @@ export function MainHome({ childName, onNavigate }: MainHomeProps) {
               style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center p-2">
+            <div className="w-20 h-20 rounded-3xl flex items-center justify-center p-3"
+                 style={{ background: 'linear-gradient(135deg, #5B4B9D 0%, #7B68B0 50%, #9575CD 100%)' }}>
               <img src="/w.png" alt="وصال" className="w-full h-full object-contain" />
             </div>
             <div>
